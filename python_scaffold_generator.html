@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Python Scaffold Generator</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f0efe9;
+    --text: #1a1a1a; --text2: #555; --text3: #999;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 8px; --radius-lg: 12px;
+    --accent: #534AB7; --accent-light: #EEEDFE; --accent-mid: #7F77DD;
+    --mono: 'Courier New', Courier, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e; --bg2: #2c2c2e; --bg3: #3a3a3c;
+      --text: #f0f0f0; --text2: #aaa; --text3: #666;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --accent-light: #2e2a5c;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg3); color: var(--text); min-height: 100vh; }
+
+  header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 1rem 2rem; display: flex; align-items: baseline; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header p  { font-size: 13px; color: var(--text2); }
+  .badge { font-size: 10px; background: var(--accent-light); color: var(--accent); padding: 2px 8px; border-radius: 10px; font-weight: 600; border: 0.5px solid var(--accent-mid); }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 57px); }
+
+  /* Sidebar */
+  aside { background: var(--bg); border-right: 0.5px solid var(--border); padding: 1.25rem 0; overflow-y: auto; }
+  .sidebar-section { margin-bottom: 0.25rem; }
+  .sidebar-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); padding: 0.5rem 1.25rem 0.25rem; font-weight: 600; }
+  .cat-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 1.25rem; border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--text2); font-family: var(--sans); text-align: left; transition: all .15s; }
+  .cat-btn:hover { background: var(--bg2); color: var(--text); }
+  .cat-btn.active { background: var(--accent-light); color: var(--accent); font-weight: 600; border-right: 2.5px solid var(--accent); }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Main */
+  main { padding: 1.5rem 2rem; overflow-y: auto; }
+  .main-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .main-header h2 { font-size: 16px; font-weight: 600; }
+  .name-row { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .name-row label { font-size: 12px; color: var(--text2); }
+  .name-row input { font-size: 13px; padding: 5px 10px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); font-family: var(--sans); width: 160px; outline: none; }
+  .name-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+
+  .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
+  .tpl-card { padding: 10px 12px; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--bg); cursor: pointer; text-align: left; transition: all .15s; }
+  .tpl-card:hover { border-color: var(--accent-mid); background: var(--accent-light); }
+  .tpl-card.selected { border: 1.5px solid var(--accent); background: var(--accent-light); }
+  .tpl-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+  .tpl-name { font-size: 12px; font-weight: 600; color: var(--text); display: block; margin-bottom: 2px; }
+  .tpl-deps { font-size: 10px; color: var(--text2); }
+  .tpl-deps.stdlib { color: var(--text3); }
+
+  /* Code panel */
+  .code-panel { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .code-topbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 0.5px solid var(--border); flex-wrap: wrap; }
+  .code-title { font-size: 13px; font-weight: 600; flex: 1; }
+  .code-meta { font-size: 11px; color: var(--text2); }
+  .code-dep-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; border: 0.5px solid; }
+  .copy-btn { font-size: 12px; padding: 4px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: transparent; cursor: pointer; font-family: var(--sans); color: var(--text2); transition: all .15s; }
+  .copy-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .copy-btn.copied { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+  pre { padding: 16px; font-size: 12px; line-height: 1.75; overflow-x: auto; color: var(--text); white-space: pre; font-family: var(--mono); max-height: 520px; overflow-y: auto; background: var(--bg2); }
+  .placeholder { padding: 3rem 1rem; text-align: center; color: var(--text3); font-size: 14px; }
+
+  /* Footer */
+  footer { text-align: center; padding: 1rem; font-size: 11px; color: var(--text3); border-top: 0.5px solid var(--border); background: var(--bg); margin-top: 1.5rem; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐍 Python Scaffold Generator</h1>
+  <p>Offline code skeleton builder — no LLM, no internet needed</p>
+  <span class="badge">v2.0</span>
+</header>
+
+<div class="layout">
+  <aside id="sidebar"></aside>
+  <main>
+    <div class="main-header">
+      <h2 id="cat-title">AI Tools</h2>
+      <div class="name-row">
+        <label for="customName">Class / App name:</label>
+        <input id="customName" type="text" value="MyApp" oninput="regenerate()" placeholder="e.g. UserManager"/>
+      </div>
+    </div>
+    <div class="tpl-grid" id="tpl-grid"></div>
+    <div class="code-panel" id="code-panel">
+      <div class="placeholder">← Select a category and template to generate a Python skeleton</div>
+    </div>
+  </main>
+</div>
+
+<footer>
+  Python Scaffold Generator &nbsp;·&nbsp; <a href="https://github.com" target="_blank">GitHub</a> &nbsp;·&nbsp; All templates are offline &amp; LLM-free
+</footer>
+
+<script>
+const CATS = [
+  {id:'backend',  label:'Backend',       color:'#1D9E75', bg:'#E1F5EE', dot:'#1D9E75'},
+  {id:'frontend', label:'Frontend / UI', color:'#185FA5', bg:'#E6F1FB', dot:'#185FA5'},
+  {id:'database', label:'Database',      color:'#854F0B', bg:'#FAEEDA', dot:'#854F0B'},
+  {id:'json',     label:'JSON & Schema', color:'#993556', bg:'#FBEAF0', dot:'#993556'},
+  {id:'api',      label:'API Modelling', color:'#534AB7', bg:'#EEEDFE', dot:'#534AB7'},
+  {id:'ai',       label:'AI Tools',      color:'#0F6E56', bg:'#E1F5EE', dot:'#0F6E56'},
+  {id:'utils',    label:'Utilities',     color:'#5F5E5A', bg:'#F1EFE8', dot:'#5F5E5A'},
+];
+
+const TEMPLATES = {
+  backend:[
+    {id:'flask_api',icon:'🌐',name:'Flask REST API',deps:'flask',
+     code:(n)=>`from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+
+${n.toLowerCase()}_store = []
+
+@app.route("/${n.toLowerCase()}s", methods=["GET"])
+def get_all():
+    return jsonify(${n.toLowerCase()}_store)
+
+@app.route("/${n.toLowerCase()}s/<int:item_id>", methods=["GET"])
+def get_one(item_id):
+    item = next((i for i in ${n.toLowerCase()}_store if i["id"] == item_id), None)
+    if not item:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(item)
+
+@app.route("/${n.toLowerCase()}s", methods=["POST"])
+def create():
+    data = request.get_json()
+    # TODO: validate fields
+    data["id"] = len(${n.toLowerCase()}_store) + 1
+    ${n.toLowerCase()}_store.append(data)
+    return jsonify(data), 201
+
+@app.route("/${n.toLowerCase()}s/<int:item_id>", methods=["PUT"])
+def update(item_id):
+    item = next((i for i in ${n.toLowerCase()}_store if i["id"] == item_id), None)
+    if not item:
+        return jsonify({"error": "Not found"}), 404
+    item.update(request.get_json())
+    return jsonify(item)
+
+@app.route("/${n.toLowerCase()}s/<int:item_id>", methods=["DELETE"])
+def delete(item_id):
+    global ${n.toLowerCase()}_store
+    ${n.toLowerCase()}_store = [i for i in ${n.toLowerCase()}_store if i["id"] != item_id]
+    return jsonify({"deleted": item_id})
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)`},
+    {id:'fastapi',icon:'⚡',name:'FastAPI App',deps:'fastapi uvicorn pydantic',
+     code:(n)=>`from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
+app = FastAPI(title="${n} API", version="1.0.0")
+
+class ${n}Item(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: str = ""
+    active: bool = True
+
+store: List[${n}Item] = []
+
+@app.get("/${n.toLowerCase()}s", response_model=List[${n}Item])
+async def list_items():
+    return store
+
+@app.get("/${n.toLowerCase()}s/{item_id}", response_model=${n}Item)
+async def get_item(item_id: int):
+    item = next((i for i in store if i.id == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Not found")
+    return item
+
+@app.post("/${n.toLowerCase()}s", response_model=${n}Item, status_code=201)
+async def create_item(item: ${n}Item):
+    item.id = len(store) + 1
+    store.append(item)
+    return item
+
+@app.delete("/${n.toLowerCase()}s/{item_id}")
+async def delete_item(item_id: int):
+    global store
+    store = [i for i in store if i.id != item_id]
+    return {"deleted": item_id}`},
+    {id:'service',icon:'🧩',name:'Service Class',deps:'stdlib',
+     code:(n)=>`from typing import List, Optional, Dict, Any
+from dataclasses import dataclass, field
+from datetime import datetime
+
+@dataclass
+class ${n}:
+    id: int
+    name: str
+    data: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+class ${n}Service:
+    def __init__(self):
+        self._store: List[${n}] = []
+        self._next_id = 1
+
+    def create(self, name: str, **kwargs) -> ${n}:
+        item = ${n}(id=self._next_id, name=name, data=kwargs)
+        self._store.append(item)
+        self._next_id += 1
+        return item
+
+    def get(self, item_id: int) -> Optional[${n}]:
+        return next((i for i in self._store if i.id == item_id), None)
+
+    def list_all(self) -> List[${n}]:
+        return list(self._store)
+
+    def update(self, item_id: int, **kwargs) -> Optional[${n}]:
+        item = self.get(item_id)
+        if not item:
+            return None
+        for k, v in kwargs.items():
+            setattr(item, k, v) if hasattr(item, k) else item.data.update({k: v})
+        return item
+
+    def delete(self, item_id: int) -> bool:
+        before = len(self._store)
+        self._store = [i for i in self._store if i.id != item_id]
+        return len(self._store) < before`},
+    {id:'cli',icon:'💻',name:'CLI Tool',deps:'stdlib',
+     code:(n)=>`import argparse, sys
+
+def run(args):
+    # TODO: implement main logic
+    print(f"Running ${n} -> {vars(args)}")
+
+def main():
+    p = argparse.ArgumentParser(description="${n} CLI")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    run_p = sub.add_parser("run", help="Execute main task")
+    run_p.add_argument("--input", "-i", required=True)
+    run_p.add_argument("--output", "-o", default="out.txt")
+    run_p.add_argument("--verbose", "-v", action="store_true")
+
+    info_p = sub.add_parser("info", help="Show info")
+    info_p.add_argument("target")
+
+    args = p.parse_args()
+    if args.cmd == "run": run(args)
+    elif args.cmd == "info": print(f"Info: {args.target}")
+    else: p.print_help(); sys.exit(1)
+
+if __name__ == "__main__":
+    main()`},
+  ],
+  frontend:[
+    {id:'tkinter',icon:'🖼️',name:'Tkinter App',deps:'stdlib',
+     code:(n)=>`import tkinter as tk
+from tkinter import ttk, messagebox
+
+class ${n}App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("${n}")
+        self.geometry("640x420")
+        self._build_ui()
+
+    def _build_ui(self):
+        top = ttk.Frame(self, padding=10)
+        top.pack(fill="x")
+        ttk.Label(top, text="Input:").pack(side="left")
+        self.entry = ttk.Entry(top, width=30)
+        self.entry.pack(side="left", padx=6)
+        ttk.Button(top, text="Submit", command=self._on_submit).pack(side="left")
+        ttk.Button(top, text="Clear", command=self._on_clear).pack(side="left", padx=4)
+
+        mid = ttk.Frame(self, padding=(10, 0))
+        mid.pack(fill="both", expand=True)
+        self.listbox = tk.Listbox(mid, font=("Helvetica", 11))
+        sb = ttk.Scrollbar(mid, orient="vertical", command=self.listbox.yview)
+        self.listbox.configure(yscrollcommand=sb.set)
+        self.listbox.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+
+        self.status = tk.StringVar(value="Ready")
+        ttk.Label(self, textvariable=self.status, relief="sunken", anchor="w").pack(fill="x", padx=10, pady=4)
+
+    def _on_submit(self):
+        t = self.entry.get().strip()
+        if not t: messagebox.showwarning("Empty", "Please enter a value."); return
+        self.listbox.insert("end", t)
+        self.entry.delete(0, "end")
+        self.status.set(f"Added: {t}")
+
+    def _on_clear(self):
+        self.listbox.delete(0, "end")
+        self.status.set("Cleared")
+
+if __name__ == "__main__":
+    ${n}App().mainloop()`},
+    {id:'streamlit',icon:'🎈',name:'Streamlit App',deps:'streamlit pandas',
+     code:(n)=>`import streamlit as st
+import pandas as pd
+
+st.set_page_config(page_title="${n}", layout="wide")
+
+with st.sidebar:
+    st.header("Settings")
+    show_raw = st.toggle("Show raw data", False)
+    filter_val = st.text_input("Filter", "")
+
+st.title("${n} Dashboard")
+
+@st.cache_data
+def load_data():
+    return pd.DataFrame({
+        "Name": ["Item A", "Item B", "Item C", "Item D"],
+        "Value": [42, 85, 13, 67],
+        "Active": [True, False, True, True],
+    })
+
+df = load_data()
+if filter_val:
+    df = df[df["Name"].str.contains(filter_val, case=False)]
+
+c1, c2, c3 = st.columns(3)
+c1.metric("Total", len(df))
+c2.metric("Avg Value", f"{df['Value'].mean():.1f}")
+c3.metric("Active", int(df["Active"].sum()))
+
+st.bar_chart(df.set_index("Name")["Value"])
+if show_raw: st.dataframe(df, use_container_width=True)`},
+    {id:'gradio',icon:'🤗',name:'Gradio Interface',deps:'gradio',
+     code:(n)=>`import gradio as gr
+
+def process(text_in: str, num_in: float, flag: bool) -> str:
+    # TODO: replace with your logic / model call
+    if not text_in.strip():
+        return "Error: empty input"
+    return f"[${n}] text={text_in!r} num={num_in} flag={flag}"
+
+with gr.Blocks(title="${n}") as demo:
+    gr.Markdown("# ${n}")
+    with gr.Row():
+        with gr.Column():
+            txt = gr.Textbox(label="Input text")
+            num = gr.Number(label="Value", value=0.0)
+            flg = gr.Checkbox(label="Option")
+            gr.Button("Run", variant="primary").click(
+                fn=process, inputs=[txt, num, flg],
+                outputs=gr.Textbox(label="Output", lines=6)
+            )
+
+if __name__ == "__main__":
+    demo.launch()`},
+    {id:'pygame',icon:'🎮',name:'Pygame Window',deps:'pygame',
+     code:(n)=>`import pygame, sys
+
+W, H, FPS = 800, 600, 60
+
+class ${n}Game:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((W, H))
+        pygame.display.set_caption("${n}")
+        self.clock = pygame.time.Clock()
+        self.font  = pygame.font.SysFont("monospace", 18)
+        self.running = True
+        self.score = 0
+
+    def handle_events(self):
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT: self.running = False
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE: self.running = False
+
+    def update(self):
+        pass  # TODO: game logic
+
+    def draw(self):
+        self.screen.fill((30, 30, 40))
+        # TODO: draw game objects
+        surf = self.font.render(f"Score: {self.score}", True, (200, 200, 200))
+        self.screen.blit(surf, (12, 12))
+        pygame.display.flip()
+
+    def run(self):
+        while self.running:
+            self.handle_events(); self.update(); self.draw()
+            self.clock.tick(FPS)
+        pygame.quit(); sys.exit()
+
+if __name__ == "__main__":
+    ${n}Game().run()`},
+  ],
+  database:[
+    {id:'sqlalchemy',icon:'🗄️',name:'SQLAlchemy ORM',deps:'sqlalchemy',
+     code:(n)=>`from sqlalchemy import (create_engine, Column, Integer, String,
+                        Boolean, DateTime, Text)
+from sqlalchemy.orm import declarative_base, sessionmaker
+from datetime import datetime
+
+DATABASE_URL = "sqlite:///./${n.toLowerCase()}.db"
+engine = create_engine(DATABASE_URL, echo=False)
+Session = sessionmaker(bind=engine)
+Base = declarative_base()
+
+class ${n}(Base):
+    __tablename__ = "${n.toLowerCase()}s"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    name        = Column(String(120), nullable=False, index=True)
+    description = Column(Text, default="")
+    active      = Column(Boolean, default=True)
+    created_at  = Column(DateTime, default=datetime.utcnow)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+    def __repr__(self):
+        return f"<${n} id={self.id} name={self.name!r}>"
+
+def create(session, name: str, **kwargs):
+    obj = ${n}(name=name, **kwargs)
+    session.add(obj); session.commit(); session.refresh(obj)
+    return obj
+
+def get_by_id(session, obj_id: int):
+    return session.get(${n}, obj_id)
+
+def list_active(session):
+    return session.query(${n}).filter_by(active=True).all()
+
+def update(session, obj_id: int, **kwargs):
+    obj = get_by_id(session, obj_id)
+    if obj:
+        for k, v in kwargs.items(): setattr(obj, k, v)
+        session.commit()
+    return obj
+
+def soft_delete(session, obj_id: int):
+    return update(session, obj_id, active=False)
+
+if __name__ == "__main__":
+    Base.metadata.create_all(engine)
+    with Session() as s:
+        item = create(s, name="First item")
+        print(item.to_dict())`},
+    {id:'alembic',icon:'🔀',name:'Alembic Migration',deps:'alembic sqlalchemy',
+     code:(n)=>`"""${n} migration scaffold"""
+from alembic import op
+import sqlalchemy as sa
+
+revision = "xxxx"       # TODO: fill in
+down_revision = None    # TODO: previous revision id
+branch_labels = None
+depends_on = None
+
+def upgrade() -> None:
+    op.create_table(
+        "${n.toLowerCase()}s",
+        sa.Column("id",          sa.Integer(),  primary_key=True),
+        sa.Column("name",        sa.String(120), nullable=False),
+        sa.Column("description", sa.Text(),      nullable=True),
+        sa.Column("active",      sa.Boolean(),   default=True),
+        sa.Column("created_at",  sa.DateTime(),  nullable=True),
+        sa.Column("updated_at",  sa.DateTime(),  nullable=True),
+    )
+    op.create_index("ix_${n.toLowerCase()}s_name", "${n.toLowerCase()}s", ["name"])
+    # op.add_column("users", sa.Column("role", sa.String(50), default="viewer"))
+
+def downgrade() -> None:
+    op.drop_index("ix_${n.toLowerCase()}s_name", "${n.toLowerCase()}s")
+    op.drop_table("${n.toLowerCase()}s")`},
+    {id:'pydantic_schema',icon:'📐',name:'Pydantic Schema',deps:'pydantic',
+     code:(n)=>`from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List
+from datetime import datetime
+from enum import Enum
+
+class ${n}Status(str, Enum):
+    active   = "active"
+    inactive = "inactive"
+    pending  = "pending"
+
+class ${n}Base(BaseModel):
+    name:        str        = Field(..., min_length=1, max_length=120)
+    description: str        = Field(default="", max_length=500)
+    status:      ${n}Status = ${n}Status.active
+    tags:        List[str]  = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def name_must_not_be_blank(cls, v: str) -> str:
+        if not v.strip(): raise ValueError("name cannot be blank")
+        return v.strip()
+
+class ${n}Create(${n}Base):
+    pass
+
+class ${n}Update(BaseModel):
+    name:        Optional[str]         = None
+    description: Optional[str]        = None
+    status:      Optional[${n}Status] = None
+    tags:        Optional[List[str]]  = None
+
+class ${n}Response(${n}Base):
+    id:         int
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+if __name__ == "__main__":
+    item = ${n}Create(name="  Hello World  ", tags=["demo"])
+    print(item.model_dump_json(indent=2))`},
+    {id:'redis',icon:'🔴',name:'Redis Cache Layer',deps:'redis',
+     code:(n)=>`import redis, json
+from typing import Any, Optional
+
+class ${n}Cache:
+    PREFIX = "${n.toLowerCase()}:"
+    DEFAULT_TTL = 300
+
+    def __init__(self, host="localhost", port=6379, db=0):
+        self.r = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+
+    def _key(self, obj_id) -> str:
+        return f"{self.PREFIX}{obj_id}"
+
+    def set(self, obj_id, data: Any, ttl: int = DEFAULT_TTL):
+        self.r.setex(self._key(obj_id), ttl, json.dumps(data))
+
+    def get(self, obj_id) -> Optional[Any]:
+        raw = self.r.get(self._key(obj_id))
+        return json.loads(raw) if raw else None
+
+    def delete(self, obj_id):
+        self.r.delete(self._key(obj_id))
+
+    def invalidate_all(self):
+        keys = self.r.keys(f"{self.PREFIX}*")
+        if keys: self.r.delete(*keys)
+
+    def get_or_fetch(self, obj_id, fetch_fn, ttl: int = DEFAULT_TTL) -> Any:
+        cached = self.get(obj_id)
+        if cached is not None: return cached
+        data = fetch_fn(obj_id)
+        if data is not None: self.set(obj_id, data, ttl)
+        return data
+
+if __name__ == "__main__":
+    cache = ${n}Cache()
+    cache.set(1, {"id": 1, "name": "Test"})
+    print(cache.get(1))`},
+  ],
+  json:[
+    {id:'json_validator',icon:'✅',name:'JSON Validator',deps:'jsonschema',
+     code:(n)=>`import json, jsonschema
+from pathlib import Path
+from typing import Any, Dict
+
+${n.toUpperCase()}_SCHEMA: Dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "${n}",
+    "type": "object",
+    "required": ["id", "name"],
+    "properties": {
+        "id":          {"type": "integer", "minimum": 1},
+        "name":        {"type": "string",  "minLength": 1, "maxLength": 120},
+        "description": {"type": "string"},
+        "active":      {"type": "boolean"},
+        "tags":        {"type": "array", "items": {"type": "string"}},
+        "metadata":    {"type": "object"}
+    },
+    "additionalProperties": False
+}
+
+class ${n}Validator:
+    def __init__(self, schema=None):
+        self.validator = jsonschema.Draft7Validator(schema or ${n.toUpperCase()}_SCHEMA)
+
+    def validate(self, data: Any) -> list:
+        return [{"path": list(e.absolute_path), "message": e.message}
+                for e in self.validator.iter_errors(data)]
+
+    def is_valid(self, data: Any) -> bool:
+        return self.validator.is_valid(data)
+
+    def validate_file(self, path: str) -> list:
+        return self.validate(json.loads(Path(path).read_text()))
+
+if __name__ == "__main__":
+    v = ${n}Validator()
+    print("Valid:", v.is_valid({"id": 1, "name": "Test", "active": True}))
+    print("Errors:", v.validate({"name": ""}))`},
+    {id:'json_transformer',icon:'🔄',name:'JSON Transformer',deps:'stdlib',
+     code:(n)=>`import json
+from pathlib import Path
+from typing import Any, Dict, List, Callable
+
+class ${n}Transformer:
+    def __init__(self):
+        self._data: Any = None
+        self._pipeline: List[Callable] = []
+
+    def load(self, source):
+        if isinstance(source, (str, Path)):
+            self._data = json.loads(Path(source).read_text())
+        else:
+            self._data = source
+        return self
+
+    def pipe(self, fn: Callable) -> "${n}Transformer":
+        self._pipeline.append(fn)
+        return self
+
+    def run(self) -> Any:
+        result = self._data
+        for fn in self._pipeline:
+            result = fn(result)
+        return result
+
+    def save(self, path: str, indent=2) -> Path:
+        p = Path(path)
+        p.write_text(json.dumps(self.run(), indent=indent, ensure_ascii=False))
+        return p
+
+def rename_keys(mapping: Dict[str, str]):
+    def _fn(data):
+        if isinstance(data, list):
+            return [{mapping.get(k,k): v for k,v in row.items()} for row in data]
+        return {mapping.get(k,k): v for k,v in data.items()}
+    return _fn
+
+def filter_records(predicate: Callable):
+    return lambda data: [r for r in data if predicate(r)]
+
+if __name__ == "__main__":
+    raw = [{"user_id":1,"user_name":"Alice","score":90},
+           {"user_id":2,"user_name":"Bob",  "score":45}]
+    result = (${n}Transformer()
+        .load(raw)
+        .pipe(rename_keys({"user_id":"id","user_name":"name"}))
+        .pipe(filter_records(lambda r: r["score"] >= 50))
+        .run())
+    print(json.dumps(result, indent=2))`},
+    {id:'json_store',icon:'📦',name:'JSON File Store',deps:'stdlib',
+     code:(n)=>`import json, threading
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+class ${n}Store:
+    """Thread-safe JSON file-backed key-value store."""
+
+    def __init__(self, filepath: str = "${n.toLowerCase()}_store.json"):
+        self._path = Path(filepath)
+        self._lock = threading.Lock()
+        self._data: Dict[str, Any] = {}
+        self._load()
+
+    def _load(self):
+        if self._path.exists():
+            self._data = json.loads(self._path.read_text())
+
+    def _save(self):
+        self._path.write_text(json.dumps(self._data, indent=2, ensure_ascii=False))
+
+    def set(self, key: str, value: Any):
+        with self._lock:
+            self._data[key] = value; self._save()
+
+    def get(self, key: str, default=None) -> Any:
+        return self._data.get(key, default)
+
+    def delete(self, key: str) -> bool:
+        with self._lock:
+            if key in self._data:
+                del self._data[key]; self._save(); return True
+        return False
+
+    def list_keys(self) -> List[str]: return list(self._data.keys())
+    def all(self) -> Dict[str, Any]: return dict(self._data)
+    def clear(self):
+        with self._lock: self._data = {}; self._save()
+
+if __name__ == "__main__":
+    s = ${n}Store()
+    s.set("user:1", {"name":"Alice","role":"admin"})
+    print(s.get("user:1")); print(s.list_keys())`},
+  ],
+  api:[
+    {id:'openapi',icon:'📄',name:'OpenAPI Spec Builder',deps:'pyyaml',
+     code:(n)=>`import yaml
+from typing import Dict, Any
+
+def build_spec() -> Dict[str, Any]:
+    return {
+        "openapi": "3.0.3",
+        "info": {"title": "${n} API", "version": "1.0.0"},
+        "servers": [{"url": "http://localhost:8000"}],
+        "paths": {
+            "/${n.toLowerCase()}s": {
+                "get":  {"summary": "List all", "tags": ["${n}"],
+                         "responses": {"200": {"description": "OK"}}},
+                "post": {"summary": "Create", "tags": ["${n}"],
+                         "requestBody": {"required": True, "content": {
+                             "application/json": {"schema": {"$ref": "#/components/schemas/${n}Create"}}
+                         }},
+                         "responses": {"201": {"description": "Created"}}}
+            },
+            "/${n.toLowerCase()}s/{id}": {
+                "get":    {"summary":"Get one","tags":["${n}"],
+                           "parameters":[{"name":"id","in":"path","required":True,"schema":{"type":"integer"}}],
+                           "responses":{"200":{"description":"OK"},"404":{"description":"Not found"}}},
+                "put":    {"summary":"Update","tags":["${n}"],"responses":{"200":{"description":"OK"}}},
+                "delete": {"summary":"Delete","tags":["${n}"],"responses":{"204":{"description":"Deleted"}}}
+            }
+        },
+        "components": {"schemas": {
+            "${n}": {"type":"object","properties":{
+                "id":{"type":"integer"},"name":{"type":"string"},
+                "description":{"type":"string"},"active":{"type":"boolean"}}},
+            "${n}Create": {"type":"object","required":["name"],
+                           "properties":{"name":{"type":"string"},"description":{"type":"string"}}}
+        }}
+    }
+
+if __name__ == "__main__":
+    print(yaml.dump(build_spec(), sort_keys=False, allow_unicode=True))`},
+    {id:'api_client',icon:'🔌',name:'API Client',deps:'requests',
+     code:(n)=>`import requests
+from typing import Any, Dict, List
+
+class ${n}Client:
+    def __init__(self, base_url: str, api_key: str = None, timeout: int = 10):
+        self.base_url = base_url.rstrip("/")
+        self.timeout  = timeout
+        self.session  = requests.Session()
+        if api_key:
+            self.session.headers.update({"Authorization": f"Bearer {api_key}"})
+        self.session.headers.update({"Content-Type": "application/json",
+                                     "Accept": "application/json"})
+
+    def _url(self, path: str) -> str: return f"{self.base_url}/{path.lstrip('/')}"
+    def _handle(self, r: requests.Response) -> Any:
+        r.raise_for_status()
+        return r.json() if r.content else None
+
+    def list(self, resource: str, params=None) -> List:
+        return self._handle(self.session.get(self._url(resource), params=params, timeout=self.timeout))
+    def get(self, resource: str, obj_id) -> Dict:
+        return self._handle(self.session.get(self._url(f"{resource}/{obj_id}"), timeout=self.timeout))
+    def create(self, resource: str, data: Dict) -> Dict:
+        return self._handle(self.session.post(self._url(resource), json=data, timeout=self.timeout))
+    def update(self, resource: str, obj_id, data: Dict) -> Dict:
+        return self._handle(self.session.put(self._url(f"{resource}/{obj_id}"), json=data, timeout=self.timeout))
+    def patch(self, resource: str, obj_id, data: Dict) -> Dict:
+        return self._handle(self.session.patch(self._url(f"{resource}/{obj_id}"), json=data, timeout=self.timeout))
+    def delete(self, resource: str, obj_id) -> bool:
+        self._handle(self.session.delete(self._url(f"{resource}/{obj_id}"), timeout=self.timeout))
+        return True
+
+if __name__ == "__main__":
+    client = ${n}Client("http://localhost:8000", api_key="your-key")
+    print(client.list("${n.toLowerCase()}s"))`},
+    {id:'mock_server',icon:'🎭',name:'Mock API Server',deps:'flask',
+     code:(n)=>`"""Lightweight mock server for ${n} API — useful for offline testing."""
+from flask import Flask, jsonify, request, abort
+import uuid
+
+app = Flask(__name__)
+_db = {}
+
+def _id(): return str(uuid.uuid4())[:8]
+
+@app.route("/health")
+def health(): return jsonify({"status": "ok", "records": len(_db)})
+
+@app.route("/${n.toLowerCase()}s", methods=["GET"])
+def list_all():
+    q = request.args.get("q", "").lower()
+    items = list(_db.values())
+    if q: items = [i for i in items if q in i.get("name","").lower()]
+    return jsonify(items)
+
+@app.route("/${n.toLowerCase()}s/<obj_id>", methods=["GET"])
+def get_one(obj_id): return jsonify(_db.get(obj_id) or abort(404))
+
+@app.route("/${n.toLowerCase()}s", methods=["POST"])
+def create():
+    d = request.get_json(force=True)
+    d["id"] = _id(); _db[d["id"]] = d
+    return jsonify(d), 201
+
+@app.route("/${n.toLowerCase()}s/<obj_id>", methods=["PUT","PATCH"])
+def update(obj_id):
+    if obj_id not in _db: abort(404)
+    _db[obj_id].update(request.get_json(force=True))
+    return jsonify(_db[obj_id])
+
+@app.route("/${n.toLowerCase()}s/<obj_id>", methods=["DELETE"])
+def delete(obj_id): _db.pop(obj_id, None); return "", 204
+
+if __name__ == "__main__":
+    app.run(debug=True, port=9000)`},
+    {id:'webhook',icon:'🪝',name:'Webhook Handler',deps:'flask',
+     code:(n)=>`import hmac, hashlib
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+WEBHOOK_SECRET = "your-secret-here"
+
+def verify_sig(payload: bytes, header: str) -> bool:
+    expected = hmac.new(WEBHOOK_SECRET.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, header.replace("sha256=", ""))
+
+def on_created(data): print(f"[created] {data}")   # TODO
+def on_updated(data): print(f"[updated] {data}")   # TODO
+def on_deleted(data): print(f"[deleted] {data}")   # TODO
+
+HANDLERS = {
+    "${n.toLowerCase()}.created": on_created,
+    "${n.toLowerCase()}.updated": on_updated,
+    "${n.toLowerCase()}.deleted": on_deleted,
+}
+
+@app.route("/webhooks/${n.toLowerCase()}", methods=["POST"])
+def webhook():
+    sig = request.headers.get("X-Signature-256", "")
+    if not verify_sig(request.data, sig):
+        return jsonify({"error": "Invalid signature"}), 401
+    payload = request.get_json(force=True)
+    event   = payload.get("event", "")
+    handler = HANDLERS.get(event)
+    if handler:
+        handler(payload.get("data", {}))
+        return jsonify({"status": "handled", "event": event})
+    return jsonify({"status": "ignored", "event": event})
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5050)`},
+  ],
+  ai:[
+    {id:'llm_router',icon:'🧠',name:'LLM Router',deps:'requests',
+     code:(n)=>`"""
+${n} — pluggable LLM router.
+Switch provider by changing PROVIDER env var — no other code changes needed.
+Supported: anthropic | openai | ollama (local/free)
+"""
+import os, requests
+from typing import List, Dict
+
+PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
+MODEL    = os.getenv("LLM_MODEL",    "claude-sonnet-4-20250514")
+API_KEY  = os.getenv("LLM_API_KEY",  "")
+
+def chat(messages: List[Dict], system: str = "", max_tokens: int = 1024) -> str:
+    """Send messages and return assistant reply. Swap brain by changing PROVIDER."""
+    if PROVIDER == "anthropic": return _anthropic(messages, system, max_tokens)
+    if PROVIDER == "openai":    return _openai(messages, system, max_tokens)
+    if PROVIDER == "ollama":    return _ollama(messages, system, max_tokens)
+    raise ValueError(f"Unknown provider: {PROVIDER}")
+
+def _anthropic(messages, system, max_tokens) -> str:
+    payload = {"model": MODEL, "max_tokens": max_tokens, "messages": messages}
+    if system: payload["system"] = system
+    r = requests.post("https://api.anthropic.com/v1/messages", json=payload,
+        headers={"x-api-key": API_KEY, "anthropic-version": "2023-06-01"})
+    r.raise_for_status()
+    return r.json()["content"][0]["text"]
+
+def _openai(messages, system, max_tokens) -> str:
+    msgs = ([{"role":"system","content":system}] if system else []) + messages
+    r = requests.post("https://api.openai.com/v1/chat/completions",
+        json={"model": MODEL, "messages": msgs, "max_tokens": max_tokens},
+        headers={"Authorization": f"Bearer {API_KEY}"})
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+def _ollama(messages, system, max_tokens) -> str:
+    msgs = ([{"role":"system","content":system}] if system else []) + messages
+    r = requests.post("http://localhost:11434/api/chat",
+        json={"model": MODEL, "messages": msgs, "stream": False})
+    r.raise_for_status()
+    return r.json()["message"]["content"]
+
+if __name__ == "__main__":
+    reply = chat([{"role":"user","content":"Say hello in one sentence."}],
+                 system="You are a concise assistant.")
+    print(reply)`},
+    {id:'prompt_builder',icon:'✍️',name:'Prompt Builder',deps:'stdlib',
+     code:(n)=>`from typing import Dict, List
+from string import Template
+import json
+
+class ${n}PromptBuilder:
+    """Build and manage prompts. All offline — no LLM dependency."""
+
+    TEMPLATES: Dict[str, str] = {
+        "classify": (
+            "You are a classifier.\\nCategories: $categories\\n\\n"
+            "Text:\\n$text\\n\\nRespond with ONLY the category name."
+        ),
+        "extract": (
+            "Extract these fields from the text: $fields\\n\\n"
+            "Text:\\n$text\\n\\nReturn a JSON object with exactly those field names."
+        ),
+        "summarise": "Summarise in $max_words words or fewer:\\n\\n$text",
+        "qa": (
+            "Answer using only the context below.\\n\\n"
+            "Context:\\n$context\\n\\nQuestion: $question\\nAnswer:"
+        ),
+        # TODO: add domain-specific templates here
+    }
+
+    def __init__(self):
+        self._shots: List[Dict] = []
+        self._cot = False
+
+    def add_example(self, user: str, assistant: str) -> "${n}PromptBuilder":
+        self._shots += [{"role":"user","content":user},
+                        {"role":"assistant","content":assistant}]
+        return self
+
+    def with_chain_of_thought(self) -> "${n}PromptBuilder":
+        self._cot = True; return self
+
+    def build(self, template_name: str, **kwargs) -> List[Dict]:
+        tpl = self.TEMPLATES.get(template_name)
+        if not tpl: raise KeyError(f"Unknown template: {template_name!r}")
+        content = Template(tpl).safe_substitute(**kwargs)
+        if self._cot:
+            content += "\\n\\nThink step by step before giving your final answer."
+        return list(self._shots) + [{"role":"user","content":content}]
+
+    def raw(self, content: str) -> List[Dict]:
+        return list(self._shots) + [{"role":"user","content":content}]
+
+if __name__ == "__main__":
+    b = ${n}PromptBuilder()
+    msgs = b.build("classify", categories="positive, negative, neutral",
+                   text="I loved the product!")
+    print(json.dumps(msgs, indent=2))`},
+    {id:'agent_loop',icon:'🤖',name:'Agent Loop',deps:'requests',
+     code:(n)=>`"""
+${n} agent loop — LLM decides which tool to call each step.
+Add tools with @tool("name"). Swap LLM in call_llm().
+"""
+import json, os, requests
+from typing import Callable, Dict, List
+
+TOOLS: Dict[str, Callable] = {}
+
+def tool(name: str):
+    """Register a Python function as an agent tool."""
+    def dec(fn): TOOLS[name] = fn; return fn
+    return dec
+
+@tool("calculator")
+def calculator(expression: str) -> str:
+    try: return str(eval(expression, {"__builtins__": {}}))
+    except Exception as e: return f"Error: {e}"
+
+@tool("get_time")
+def get_time() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat()
+
+# TODO: add more tools — db lookup, file read, API call, etc.
+
+SYSTEM = """You are ${n}, a helpful agent.
+To call a tool respond with ONLY this JSON:
+{"tool": "tool_name", "args": {"arg": "value"}}
+When done, reply in plain text starting with FINAL:"""
+
+def call_llm(messages: List[Dict]) -> str:
+    r = requests.post("https://api.anthropic.com/v1/messages",
+        json={"model":"claude-sonnet-4-20250514","max_tokens":1024,
+              "system":SYSTEM,"messages":messages},
+        headers={"x-api-key": os.getenv("ANTHROPIC_API_KEY",""),
+                 "anthropic-version":"2023-06-01"})
+    return r.json()["content"][0]["text"]
+
+def run_agent(user_input: str, max_steps: int = 8) -> str:
+    messages = [{"role":"user","content":user_input}]
+    for _ in range(max_steps):
+        reply = call_llm(messages)
+        messages.append({"role":"assistant","content":reply})
+        if reply.strip().startswith("FINAL:"):
+            return reply.replace("FINAL:","").strip()
+        try:
+            parsed = json.loads(reply.strip())
+            fn = TOOLS.get(parsed.get("tool",""))
+            args = parsed.get("args", {})
+            result = fn(**args) if args else fn()
+            messages.append({"role":"user","content":f"Tool result: {result}"})
+        except json.JSONDecodeError:
+            return reply
+    return "Max steps reached."
+
+if __name__ == "__main__":
+    print(run_agent("What is 17 * 38? And what time is it now?"))`},
+    {id:'vector_store',icon:'🔍',name:'Vector Store',deps:'numpy',
+     code:(n)=>`"""
+${n} — minimal in-memory vector store.
+Plug in any embedding model; no external vector DB needed for small collections.
+"""
+import json, numpy as np
+from typing import List, Dict, Any, Callable, Tuple
+from pathlib import Path
+
+class ${n}VectorStore:
+    def __init__(self, embed_fn: Callable[[str], List[float]]):
+        """
+        embed_fn: str -> List[float]
+        Example:
+            from sentence_transformers import SentenceTransformer
+            model = SentenceTransformer("all-MiniLM-L6-v2")
+            store = ${n}VectorStore(lambda t: model.encode(t).tolist())
+        """
+        self.embed_fn = embed_fn
+        self._vecs: List[np.ndarray] = []
+        self._docs: List[Dict[str, Any]] = []
+
+    def add(self, text: str, metadata: Dict = None):
+        self._vecs.append(np.array(self.embed_fn(text), dtype=np.float32))
+        self._docs.append({"text": text, "meta": metadata or {}})
+
+    def search(self, query: str, top_k=5) -> List[Tuple[float, Dict]]:
+        if not self._vecs: return []
+        q = np.array(self.embed_fn(query), dtype=np.float32)
+        M = np.stack(self._vecs)
+        scores = M @ q / (np.linalg.norm(M, axis=1) * np.linalg.norm(q) + 1e-9)
+        idx = np.argsort(scores)[::-1][:top_k]
+        return [(float(scores[i]), self._docs[i]) for i in idx]
+
+    def save(self, path: str):
+        p = Path(path)
+        np.save(p.with_suffix(".npy"), np.stack(self._vecs))
+        p.with_suffix(".json").write_text(json.dumps(self._docs, ensure_ascii=False))
+
+    def load(self, path: str):
+        p = Path(path)
+        self._vecs = list(np.load(p.with_suffix(".npy")))
+        self._docs = json.loads(p.with_suffix(".json").read_text())
+
+if __name__ == "__main__":
+    import random
+    store = ${n}VectorStore(lambda t: [random.random() for _ in range(64)])
+    store.add("Python is great for data science", {"tag":"python"})
+    store.add("FastAPI makes REST APIs easy",     {"tag":"api"})
+    for score, doc in store.search("build an API", top_k=2):
+        print(f"{score:.3f}  {doc['text']}")`},
+    {id:'rag',icon:'📚',name:'RAG Pipeline',deps:'requests numpy',
+     code:(n)=>`"""
+${n} RAG pipeline — Retrieval-Augmented Generation.
+Inject your embed_fn and llm_fn; works offline with local models too.
+"""
+import json, numpy as np
+from typing import List, Dict, Callable, Any
+
+class ${n}RAG:
+    def __init__(self, embed_fn: Callable[[str], List[float]],
+                 llm_fn: Callable[[List[Dict]], str],
+                 chunk_size=400, overlap=50):
+        self.embed_fn   = embed_fn
+        self.llm_fn     = llm_fn
+        self.chunk_size = chunk_size
+        self.overlap    = overlap
+        self._chunks:  List[str]         = []
+        self._vectors: List[List[float]] = []
+        self._meta:    List[Dict]        = []
+
+    def ingest_text(self, text: str, metadata: Dict = None):
+        for chunk in self._chunk(text):
+            self._chunks.append(chunk)
+            self._vectors.append(self.embed_fn(chunk))
+            self._meta.append(metadata or {})
+
+    def ingest_file(self, path: str):
+        self.ingest_text(open(path, encoding="utf-8").read(), {"source": path})
+
+    def _chunk(self, text: str) -> List[str]:
+        words = text.split()
+        chunks, i = [], 0
+        while i < len(words):
+            chunks.append(" ".join(words[i: i + self.chunk_size]))
+            i += self.chunk_size - self.overlap
+        return chunks
+
+    def retrieve(self, query: str, top_k=4) -> List[str]:
+        if not self._vectors: return []
+        q = np.array(self.embed_fn(query))
+        M = np.array(self._vectors)
+        scores = M @ q / (np.linalg.norm(M, axis=1) * np.linalg.norm(q) + 1e-9)
+        return [self._chunks[i] for i in scores.argsort()[::-1][:top_k]]
+
+    def ask(self, question: str, top_k=4,
+            system="Answer using only the provided context.") -> str:
+        context = "\\n\\n---\\n\\n".join(self.retrieve(question, top_k))
+        return self.llm_fn([{"role":"user",
+            "content": f"Context:\\n{context}\\n\\nQuestion: {question}"}])
+
+if __name__ == "__main__":
+    dummy_embed = lambda t: [hash(w)%100/100 for w in (t.split()+[""]*64)[:64]]
+    dummy_llm   = lambda msgs: f"[LLM stub] {msgs[-1]['content'][:60]}..."
+    rag = ${n}RAG(embed_fn=dummy_embed, llm_fn=dummy_llm)
+    rag.ingest_text("Python is used for AI. FastAPI is fast. SQLAlchemy is an ORM.")
+    print(rag.ask("What is SQLAlchemy?"))`},
+  ],
+  utils:[
+    {id:'file_proc',icon:'📁',name:'File Processor',deps:'stdlib',
+     code:(n)=>`import os, json
+from pathlib import Path
+from typing import Any
+
+class ${n}Processor:
+    def __init__(self, base_dir: str = "."):
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+
+    def read_text(self, filename: str) -> str:
+        return (self.base_dir / filename).read_text(encoding="utf-8")
+
+    def write_text(self, filename: str, content: str) -> Path:
+        p = self.base_dir / filename
+        p.write_text(content, encoding="utf-8")
+        return p
+
+    def read_json(self, filename: str) -> Any:
+        return json.loads(self.read_text(filename))
+
+    def write_json(self, filename: str, data: Any, indent=2) -> Path:
+        return self.write_text(filename, json.dumps(data, indent=indent, ensure_ascii=False))
+
+    def list_files(self, pattern="*"):
+        return sorted(self.base_dir.glob(pattern))
+
+    def delete(self, filename: str) -> bool:
+        p = self.base_dir / filename
+        if p.exists(): p.unlink(); return True
+        return False`},
+    {id:'scheduler',icon:'⏱️',name:'Task Scheduler',deps:'stdlib',
+     code:(n)=>`import threading, time
+from datetime import datetime
+from typing import Callable, List
+
+class ${n}Task:
+    def __init__(self, name, fn, interval):
+        self.name=name; self.fn=fn; self.interval=interval
+        self.last_run=None; self.run_count=0
+
+class ${n}Scheduler:
+    def __init__(self):
+        self._tasks: List[${n}Task] = []
+        self._running = False
+
+    def add_task(self, name: str, fn: Callable, interval_sec: float):
+        self._tasks.append(${n}Task(name, fn, interval_sec))
+
+    def _loop(self):
+        while self._running:
+            now = datetime.utcnow()
+            for t in self._tasks:
+                if t.last_run is None or (now-t.last_run).total_seconds() >= t.interval:
+                    try: t.fn(); t.last_run=now; t.run_count+=1
+                    except Exception as e: print(f"[{t.name}] error: {e}")
+            time.sleep(0.5)
+
+    def start(self):
+        self._running=True
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def stop(self): self._running=False`},
+    {id:'config',icon:'⚙️',name:'Config Loader',deps:'stdlib',
+     code:(n)=>`import os, json
+from pathlib import Path
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict
+
+@dataclass
+class ${n}Config:
+    app_name:     str  = "${n}"
+    debug:        bool = False
+    port:         int  = 8000
+    database_url: str  = "sqlite:///app.db"
+    secret_key:   str  = "change-me"
+    extra: Dict[str, Any] = field(default_factory=dict)
+
+class ${n}ConfigLoader:
+    PREFIX = "${n.toUpperCase()}_"
+    def __init__(self, path="config.json"):
+        self.path = Path(path)
+        self.config = ${n}Config()
+
+    def load(self) -> ${n}Config:
+        if self.path.exists():
+            for k, v in json.loads(self.path.read_text()).items():
+                setattr(self.config, k, v) if hasattr(self.config, k) else self.config.extra.update({k:v})
+        for env, (attr, typ) in {
+            f"{self.PREFIX}DEBUG":        ("debug", lambda x: x.lower()=="true"),
+            f"{self.PREFIX}PORT":         ("port", int),
+            f"{self.PREFIX}DATABASE_URL": ("database_url", str),
+        }.items():
+            val = os.getenv(env)
+            if val: setattr(self.config, attr, typ(val))
+        return self.config
+
+    def save(self):
+        self.path.write_text(json.dumps(asdict(self.config), indent=2))`},
+  ],
+};
+
+let currentCat = 'ai';
+let selectedTpl = null;
+
+function renderSidebar(){
+  const sidebar = document.getElementById('sidebar');
+  const groups = [
+    {label:'Web & Services', ids:['backend','api']},
+    {label:'Data & Storage',  ids:['database','json']},
+    {label:'Interfaces',      ids:['frontend']},
+    {label:'AI / LLM',        ids:['ai']},
+    {label:'Helpers',         ids:['utils']},
+  ];
+  sidebar.innerHTML = groups.map(g => `
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">${g.label}</div>
+      ${g.ids.map(id => {
+        const cat = CATS.find(c=>c.id===id);
+        const count = TEMPLATES[id].length;
+        return `<button class="cat-btn ${id===currentCat?'active':''}" onclick="setCat('${id}')">
+          <span class="cat-dot" style="background:${cat.dot}"></span>
+          ${cat.label}
+          <span style="margin-left:auto;font-size:10px;opacity:.6">${count}</span>
+        </button>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function setCat(id){
+  currentCat=id; selectedTpl=null;
+  const cat=CATS.find(c=>c.id===id);
+  document.getElementById('cat-title').textContent=cat.label;
+  renderSidebar(); renderTemplates();
+  document.getElementById('code-panel').innerHTML=
+    '<div class="placeholder">Select a template to generate a Python skeleton</div>';
+}
+
+function renderTemplates(){
+  const cat=CATS.find(c=>c.id===currentCat);
+  document.getElementById('tpl-grid').innerHTML = TEMPLATES[currentCat].map(t=>`
+    <button class="tpl-card ${selectedTpl===t.id?'selected':''}" onclick="selectTpl('${t.id}')"
+      style="${selectedTpl===t.id?`border-color:${cat.color};background:${cat.bg}`:''}">
+      <span class="tpl-icon">${t.icon}</span>
+      <span class="tpl-name">${t.name}</span>
+      <span class="tpl-deps ${t.deps==='stdlib'?'stdlib':''}">${t.deps==='stdlib'?'stdlib only':'pip: '+t.deps}</span>
+    </button>`).join('');
+}
+
+function selectTpl(id){ selectedTpl=id; renderTemplates(); renderCode(); }
+function regenerate(){ if(selectedTpl) renderCode(); }
+
+function renderCode(){
+  const tpl=TEMPLATES[currentCat].find(t=>t.id===selectedTpl);
+  if(!tpl) return;
+  const raw=(document.getElementById('customName').value||'MyApp').trim();
+  const n=raw.replace(/[^a-zA-Z0-9_]/g,'_');
+  const Name=n.charAt(0).toUpperCase()+n.slice(1);
+  const code=tpl.code(Name);
+  const cat=CATS.find(c=>c.id===currentCat);
+  const lines=code.split('\n').length;
+  const isStdlib=tpl.deps==='stdlib';
+
+  document.getElementById('code-panel').innerHTML=`
+    <div class="code-topbar">
+      <span class="code-title">${tpl.icon} ${tpl.name} &mdash; ${Name}</span>
+      <span class="code-dep-badge" style="color:${cat.color};border-color:${cat.color};background:${cat.bg}">
+        ${isStdlib?'no installs':'pip install '+tpl.deps}
+      </span>
+      <span class="code-meta">${lines} lines</span>
+      <button class="copy-btn" id="cbtn" onclick="copyCode()">Copy</button>
+    </div>
+    <pre id="code-out">${esc(code)}</pre>`;
+}
+
+function copyCode(){
+  const code=document.getElementById('code-out').innerText;
+  navigator.clipboard.writeText(code).then(()=>{
+    const b=document.getElementById('cbtn');
+    b.textContent='Copied!'; b.classList.add('copied');
+    setTimeout(()=>{b.textContent='Copy';b.classList.remove('copied');},1500);
+  });
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+renderSidebar(); renderTemplates();
+</script>
+</body>
+</html>
