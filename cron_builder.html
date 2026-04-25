@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cron Expression Builder</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#854F0B;--al:#FAEEDA;--am:#5c3600;
+  --green:#1D9E75;--greenl:#E1F5EE;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#3a2000;--greenl:#0a3327;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.container{max-width:820px;margin:0 auto;padding:1.5rem}
+
+/* Expression display */
+.expr-card{background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;text-align:center}
+.expr-parts{display:flex;justify-content:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap}
+.expr-part{display:flex;flex-direction:column;align-items:center;gap:3px}
+.expr-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);min-width:36px;padding:4px 8px;background:var(--al);border-radius:var(--radius);border:0.5px solid var(--accent)}
+.expr-name{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600}
+.expr-sep{font-size:22px;font-weight:300;color:var(--text3);align-self:flex-start;padding-top:6px}
+.human-desc{font-size:16px;font-weight:500;color:var(--text);margin-bottom:.6rem}
+.copy-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.expr-raw{font-family:var(--mono);font-size:14px;padding:6px 14px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border2);color:var(--text)}
+.copy-btn{font-size:12px;padding:5px 16px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.copy-btn:hover,.copy-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Quick presets */
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem;justify-content:center}
+.preset-btn{font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid var(--border2);background:var(--bg);cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.preset-btn:hover{border-color:var(--accent);background:var(--al);color:var(--accent)}
+.preset-btn.active{border-color:var(--accent);background:var(--al);color:var(--accent);font-weight:600}
+
+/* Builder panels */
+.builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem}
+.field-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.fc-head{padding:8px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px}
+.fc-name{font-size:12px;font-weight:600;flex:1}
+.fc-val{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);background:var(--al);padding:2px 8px;border-radius:var(--radius)}
+.fc-body{padding:10px 12px}
+.fc-tabs{display:flex;gap:4px;margin-bottom:8px}
+.fc-tab{font-size:11px;padding:3px 9px;border-radius:8px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.fc-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fc-content{font-size:12px;color:var(--text2);line-height:1.7}
+.mini-input{font-size:13px;padding:5px 9px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--mono);outline:none;width:100%}
+.mini-input:focus{border-color:var(--accent)}
+.chip-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chip{padding:3px 9px;border-radius:8px;border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:11px;color:var(--text2);transition:all .15s;font-family:var(--mono)}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.range-row{display:flex;align-items:center;gap:6px;margin-top:6px}
+.range-row label{font-size:11px;color:var(--text3);white-space:nowrap}
+.range-input{width:60px;font-size:12px;padding:4px 7px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--mono);outline:none}
+.range-input:focus{border-color:var(--accent)}
+
+/* Next runs */
+.runs-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem}
+.runs-head{padding:8px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600}
+.runs-body{padding:10px 12px}
+.run-item{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12px}
+.run-item:last-child{border-bottom:none}
+.run-num{width:22px;height:22px;border-radius:50%;background:var(--greenl);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.run-dt{font-family:var(--mono);color:var(--text)}
+.run-rel{color:var(--text3);margin-left:auto}
+
+/* Code output */
+.code-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.code-tabs{display:flex;gap:5px;padding:9px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2);flex-wrap:wrap}
+.ctab{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.ctab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.code-head{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:0.5px solid var(--border)}
+.code-copy{font-size:11px;padding:3px 12px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s;margin-left:auto}
+.code-copy:hover,.code-copy.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.code{padding:12px 14px;font-size:12px;line-height:1.7;overflow-x:auto;color:var(--text);white-space:pre;font-family:var(--mono);background:var(--bg2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>⏱️ Cron Expression Builder</h1>
+  <p>Build cron schedules visually — get the expression, description, next run times, and code</p>
+  <span class="badge">offline</span>
+</header>
+
+<div class="container">
+
+  <!-- Live expression -->
+  <div class="expr-card">
+    <div class="expr-parts">
+      <div class="expr-part"><div class="expr-val" id="ep-min">*</div><div class="expr-name">minute</div></div>
+      <div class="expr-sep">·</div>
+      <div class="expr-part"><div class="expr-val" id="ep-hour">*</div><div class="expr-name">hour</div></div>
+      <div class="expr-sep">·</div>
+      <div class="expr-part"><div class="expr-val" id="ep-dom">*</div><div class="expr-name">day (month)</div></div>
+      <div class="expr-sep">·</div>
+      <div class="expr-part"><div class="expr-val" id="ep-mon">*</div><div class="expr-name">month</div></div>
+      <div class="expr-sep">·</div>
+      <div class="expr-part"><div class="expr-val" id="ep-dow">*</div><div class="expr-name">day (week)</div></div>
+    </div>
+    <div class="human-desc" id="human-desc">Every minute</div>
+    <div class="copy-row">
+      <code class="expr-raw" id="expr-raw">* * * * *</code>
+      <button class="copy-btn" id="copy-expr" onclick="copyExpr()">Copy</button>
+    </div>
+  </div>
+
+  <!-- Presets -->
+  <div class="presets" id="presets"></div>
+
+  <!-- Builder -->
+  <div class="builder-grid">
+    <!-- Minute -->
+    <div class="field-card">
+      <div class="fc-head"><span class="fc-name">⏱ Minute</span><span class="fc-val" id="fv-min">*</span></div>
+      <div class="fc-body">
+        <div class="fc-tabs">
+          <button class="fc-tab active" onclick="setMode('min','any',this)">Any</button>
+          <button class="fc-tab" onclick="setMode('min','every',this)">Every N</button>
+          <button class="fc-tab" onclick="setMode('min','specific',this)">Specific</button>
+          <button class="fc-tab" onclick="setMode('min','range',this)">Range</button>
+        </div>
+        <div id="fc-min-body"></div>
+      </div>
+    </div>
+    <!-- Hour -->
+    <div class="field-card">
+      <div class="fc-head"><span class="fc-name">🕐 Hour</span><span class="fc-val" id="fv-hour">*</span></div>
+      <div class="fc-body">
+        <div class="fc-tabs">
+          <button class="fc-tab active" onclick="setMode('hour','any',this)">Any</button>
+          <button class="fc-tab" onclick="setMode('hour','every',this)">Every N</button>
+          <button class="fc-tab" onclick="setMode('hour','specific',this)">Specific</button>
+          <button class="fc-tab" onclick="setMode('hour','range',this)">Range</button>
+        </div>
+        <div id="fc-hour-body"></div>
+      </div>
+    </div>
+    <!-- Day of month -->
+    <div class="field-card">
+      <div class="fc-head"><span class="fc-name">📅 Day of month</span><span class="fc-val" id="fv-dom">*</span></div>
+      <div class="fc-body">
+        <div class="fc-tabs">
+          <button class="fc-tab active" onclick="setMode('dom','any',this)">Any</button>
+          <button class="fc-tab" onclick="setMode('dom','specific',this)">Specific</button>
+          <button class="fc-tab" onclick="setMode('dom','range',this)">Range</button>
+        </div>
+        <div id="fc-dom-body"></div>
+      </div>
+    </div>
+    <!-- Month -->
+    <div class="field-card">
+      <div class="fc-head"><span class="fc-name">📆 Month</span><span class="fc-val" id="fv-mon">*</span></div>
+      <div class="fc-body">
+        <div class="fc-tabs">
+          <button class="fc-tab active" onclick="setMode('mon','any',this)">Any</button>
+          <button class="fc-tab" onclick="setMode('mon','specific',this)">Specific</button>
+          <button class="fc-tab" onclick="setMode('mon','range',this)">Range</button>
+        </div>
+        <div id="fc-mon-body"></div>
+      </div>
+    </div>
+    <!-- Day of week -->
+    <div class="field-card" style="grid-column:1/-1">
+      <div class="fc-head"><span class="fc-name">📋 Day of week</span><span class="fc-val" id="fv-dow">*</span></div>
+      <div class="fc-body">
+        <div class="fc-tabs">
+          <button class="fc-tab active" onclick="setMode('dow','any',this)">Any day</button>
+          <button class="fc-tab" onclick="setMode('dow','specific',this)">Specific days</button>
+          <button class="fc-tab" onclick="setMode('dow','weekdays',this)">Weekdays only</button>
+          <button class="fc-tab" onclick="setMode('dow','weekends',this)">Weekends only</button>
+        </div>
+        <div id="fc-dow-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next runs -->
+  <div class="runs-card">
+    <div class="runs-head">📅 Next 8 scheduled runs (based on your local clock)</div>
+    <div class="runs-body" id="runs-body"></div>
+  </div>
+
+  <!-- Code output -->
+  <div class="code-card">
+    <div class="code-tabs">
+      <span style="font-size:12px;font-weight:600;margin-right:4px;color:var(--text2)">Use in:</span>
+      <button class="ctab active" onclick="setCodeLang('python',this)">Python (APScheduler)</button>
+      <button class="ctab" onclick="setCodeLang('celery',this)">Celery Beat</button>
+      <button class="ctab" onclick="setCodeLang('node',this)">Node.js (node-cron)</button>
+      <button class="ctab" onclick="setCodeLang('github',this)">GitHub Actions</button>
+      <button class="ctab" onclick="setCodeLang('linux',this)">Linux crontab</button>
+    </div>
+    <div class="code-head">
+      <span style="font-size:12px;font-weight:600;flex:1" id="code-title">Python — APScheduler</span>
+      <button class="code-copy" id="code-copy-btn" onclick="copyCode()">Copy</button>
+    </div>
+    <pre class="code" id="code-output"></pre>
+  </div>
+</div>
+
+<script>
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+const state = {
+  min:  {mode:'any', specific:[], rangeFrom:0, rangeTo:59, every:5, expr:'*'},
+  hour: {mode:'any', specific:[], rangeFrom:0, rangeTo:23, every:2, expr:'*'},
+  dom:  {mode:'any', specific:[], rangeFrom:1, rangeTo:31, expr:'*'},
+  mon:  {mode:'any', specific:[], rangeFrom:1, rangeTo:12, expr:'*'},
+  dow:  {mode:'any', specific:[], expr:'*'},
+};
+
+const RANGES = {min:[0,59],hour:[0,23],dom:[1,31],mon:[1,12],dow:[0,6]};
+
+const PRESETS = [
+  {label:'Every minute',  expr:'* * * * *',  desc:''},
+  {label:'Every 5 min',   expr:'*/5 * * * *', desc:''},
+  {label:'Every 15 min',  expr:'*/15 * * * *',desc:''},
+  {label:'Every 30 min',  expr:'*/30 * * * *',desc:''},
+  {label:'Hourly',        expr:'0 * * * *',   desc:''},
+  {label:'Daily midnight',expr:'0 0 * * *',   desc:''},
+  {label:'Daily 9am',     expr:'0 9 * * *',   desc:''},
+  {label:'Weekdays 9am',  expr:'0 9 * * 1-5', desc:''},
+  {label:'Mon morning',   expr:'0 9 * * 1',   desc:''},
+  {label:'Weekly Sunday', expr:'0 0 * * 0',   desc:''},
+  {label:'Monthly 1st',   expr:'0 0 1 * *',   desc:''},
+  {label:'Midnight Fri',  expr:'0 0 * * 5',   desc:''},
+  {label:'Every 6h',      expr:'0 */6 * * *',  desc:''},
+  {label:'Twice daily',   expr:'0 9,18 * * *', desc:''},
+];
+
+let codeLang='python';
+
+// Render presets
+document.getElementById('presets').innerHTML=PRESETS.map((p,i)=>
+  `<button class="preset-btn" onclick="loadPreset('${p.expr}',this)">${p.label}</button>`).join('');
+
+function loadPreset(expr, btn){
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  btn?.classList.add('active');
+  const parts=expr.split(' ');
+  ['min','hour','dom','mon','dow'].forEach((f,i)=>{
+    state[f].expr=parts[i]||'*';
+    state[f].mode='any';
+  });
+  updateAll();
+}
+
+// ── MODE BUILDERS ──
+function setMode(field, mode, btn){
+  state[field].mode=mode;
+  // handle special dow modes
+  if(field==='dow'){
+    if(mode==='weekdays'){ state[field].expr='1-5'; }
+    else if(mode==='weekends'){ state[field].expr='0,6'; }
+    else if(mode==='any'){ state[field].expr='*'; }
+  } else if(mode==='any') { state[field].expr='*'; }
+
+  const parent=btn.closest('.fc-body').querySelector('.fc-tabs');
+  parent.querySelectorAll('.fc-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFieldBody(field);
+  buildExpr(field);
+  updateAll();
+}
+
+function renderFieldBody(field){
+  const s=state[field];
+  const [min,max]=RANGES[field];
+  const el=document.getElementById('fc-'+field+'-body');
+
+  if(s.mode==='any'||s.mode==='weekdays'||s.mode==='weekends'){
+    el.innerHTML=`<div class="fc-content" style="color:var(--text3);font-style:italic">— matches any value —</div>`;
+    return;
+  }
+
+  if(s.mode==='every'){
+    el.innerHTML=`<div class="fc-content">Every <input class="range-input" type="number" min="1" max="${max}" value="${s.every}" style="width:60px" oninput="updateEvery('${field}',this.value)"/> ${field==='min'?'minute(s)':'hour(s)'}</div>`;
+    return;
+  }
+
+  if(s.mode==='specific'){
+    const items=field==='mon'?MONTHS:field==='dow'?DAYS:Array.from({length:max-min+1},(_,i)=>String(min+i));
+    el.innerHTML=`<div class="chip-row">${items.map((item,i)=>{
+      const val=field==='mon'||field==='dow'?String(min+i):item;
+      return `<span class="chip ${s.specific.includes(val)?'on':''}" onclick="toggleChip('${field}','${val}',this)">${item}</span>`;
+    }).join('')}</div>`;
+    return;
+  }
+
+  if(s.mode==='range'){
+    el.innerHTML=`<div class="range-row">
+      <label>From:</label>
+      <input class="range-input" type="number" min="${min}" max="${max}" value="${s.rangeFrom}" oninput="updateRange('${field}','from',this.value)"/>
+      <label>to:</label>
+      <input class="range-input" type="number" min="${min}" max="${max}" value="${s.rangeTo}" oninput="updateRange('${field}','to',this.value)"/>
+    </div>`;
+    return;
+  }
+}
+
+function toggleChip(field, val, el){
+  const s=state[field];
+  const i=s.specific.indexOf(val);
+  if(i>=0) s.specific.splice(i,1); else s.specific.push(val);
+  el.classList.toggle('on', s.specific.includes(val));
+  buildExpr(field); updateAll();
+}
+
+function updateEvery(field, val){
+  state[field].every=parseInt(val)||1;
+  buildExpr(field); updateAll();
+}
+
+function updateRange(field, which, val){
+  if(which==='from') state[field].rangeFrom=parseInt(val)||0;
+  else state[field].rangeTo=parseInt(val)||0;
+  buildExpr(field); updateAll();
+}
+
+function buildExpr(field){
+  const s=state[field];
+  if(s.mode==='any') s.expr='*';
+  else if(s.mode==='weekdays') s.expr='1-5';
+  else if(s.mode==='weekends') s.expr='0,6';
+  else if(s.mode==='every') s.expr=`*/${s.every}`;
+  else if(s.mode==='specific') s.expr=s.specific.length?s.specific.sort((a,b)=>+a-+b).join(','):'*';
+  else if(s.mode==='range') s.expr=`${s.rangeFrom}-${s.rangeTo}`;
+}
+
+function updateAll(){
+  const expr=`${state.min.expr} ${state.hour.expr} ${state.dom.expr} ${state.mon.expr} ${state.dow.expr}`;
+  document.getElementById('expr-raw').textContent=expr;
+  document.getElementById('ep-min').textContent=state.min.expr;
+  document.getElementById('ep-hour').textContent=state.hour.expr;
+  document.getElementById('ep-dom').textContent=state.dom.expr;
+  document.getElementById('ep-mon').textContent=state.mon.expr;
+  document.getElementById('ep-dow').textContent=state.dow.expr;
+  ['min','hour','dom','mon','dow'].forEach(f=>{
+    document.getElementById('fv-'+f).textContent=state[f].expr;
+  });
+  document.getElementById('human-desc').textContent=describe(state);
+  renderNextRuns(expr);
+  renderCode();
+}
+
+// ── HUMAN DESCRIPTION ──
+function describe(s){
+  const min=s.min.expr, hour=s.hour.expr, dom=s.dom.expr, mon=s.mon.expr, dow=s.dow.expr;
+
+  let time='';
+  if(hour==='*'&&min==='*') time='every minute';
+  else if(hour==='*'&&min.startsWith('*/')) time=`every ${min.split('/')[1]} minutes`;
+  else if(hour.startsWith('*/')&&min==='0') time=`every ${hour.split('/')[1]} hours`;
+  else if(hour==='*') time=`at minute ${min} of every hour`;
+  else if(min==='0') time=`at ${fmtHour(hour)}`;
+  else time=`at ${fmtHour(hour)}, minute ${min}`;
+
+  let day='';
+  if(dow==='1-5') day=', Monday–Friday';
+  else if(dow==='0,6') day=', on weekends';
+  else if(dow!=='*'){
+    const names=dow.split(',').map(d=>DAYS[parseInt(d)]).filter(Boolean);
+    day=`, on ${names.join(', ')}`;
+  }
+
+  if(dom!=='*') day+=`, on day ${dom} of the month`;
+  if(mon!=='*'){
+    const names=mon.split(',').map(m=>MONTHS[parseInt(m)-1]).filter(Boolean);
+    if(names.length) day+=` in ${names.join(', ')}`;
+  }
+  return (time+day).charAt(0).toUpperCase()+(time+day).slice(1);
+}
+
+function fmtHour(h){
+  if(h.includes(',')) return h.split(',').map(fmtHour).join(' and ');
+  const n=parseInt(h);
+  if(isNaN(n)) return h;
+  const period=n<12?'AM':'PM';
+  const h12=n===0?12:n>12?n-12:n;
+  return `${h12}:00 ${period}`;
+}
+
+// ── NEXT RUN TIMES (simplified cron matching) ──
+function renderNextRuns(expr){
+  const runs=computeNextRuns(expr,8);
+  const now=Date.now();
+  document.getElementById('runs-body').innerHTML=runs.map((d,i)=>{
+    const diff=d-now;
+    const rel=formatRel(diff);
+    return `<div class="run-item">
+      <div class="run-num">${i+1}</div>
+      <div class="run-dt">${fmtDate(d)}</div>
+      <div class="run-rel">${rel}</div>
+    </div>`;
+  }).join('')||'<div style="color:var(--text3);font-size:12px">Could not compute next runs for this expression.</div>';
+}
+
+function computeNextRuns(expr, count){
+  const parts=expr.split(' ');
+  if(parts.length!==5) return [];
+  const [minP,hourP,domP,monP,dowP]=parts;
+  const matches=[];
+  const start=new Date(); start.setSeconds(0,0); start.setMinutes(start.getMinutes()+1);
+  let d=new Date(start);
+  let tries=0;
+  while(matches.length<count&&tries<10000){
+    tries++;
+    if(matchField(d.getMonth()+1,monP,1,12)&&
+       matchField(d.getDate(),domP,1,31)&&
+       matchField(d.getDay(),dowP,0,6)&&
+       matchField(d.getHours(),hourP,0,23)&&
+       matchField(d.getMinutes(),minP,0,59)){
+      matches.push(new Date(d));
+      d.setMinutes(d.getMinutes()+1);
+    } else {
+      d.setMinutes(d.getMinutes()+1);
+    }
+  }
+  return matches;
+}
+
+function matchField(val, expr, min, max){
+  if(expr==='*') return true;
+  if(expr.startsWith('*/')){
+    const step=parseInt(expr.split('/')[1]);
+    return val%step===0;
+  }
+  if(expr.includes('-')&&!expr.includes(',')){
+    const [a,b]=expr.split('-').map(Number);
+    return val>=a&&val<=b;
+  }
+  if(expr.includes(',')){
+    return expr.split(',').some(p=>matchField(val,p,min,max));
+  }
+  return parseInt(expr)===val;
+}
+
+function fmtDate(d){
+  return new Date(d).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+function formatRel(ms){
+  const s=Math.round(ms/1000);
+  if(s<60) return `in ${s}s`;
+  const m=Math.round(s/60);
+  if(m<60) return `in ${m}m`;
+  const h=Math.round(m/60);
+  if(h<24) return `in ${h}h`;
+  return `in ${Math.round(h/24)}d`;
+}
+
+// ── CODE OUTPUT ──
+function setCodeLang(lang, btn){
+  codeLang=lang;
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCode();
+}
+
+function renderCode(){
+  const expr=document.getElementById('expr-raw').textContent;
+  const desc=document.getElementById('human-desc').textContent;
+  const [min,hour,dom,mon,dow]=expr.split(' ');
+
+  const titles={python:'Python — APScheduler',celery:'Celery Beat',node:'Node.js — node-cron',github:'GitHub Actions',linux:'Linux crontab'};
+  document.getElementById('code-title').textContent=titles[codeLang]||'';
+
+  let code='';
+  if(codeLang==='python'){
+    code=`from apscheduler.schedulers.blocking import BlockingScheduler
+
+scheduler = BlockingScheduler()
+
+# Schedule: ${desc}
+# Cron:     ${expr}
+@scheduler.scheduled_job('cron',
+    minute='${min}',
+    hour='${hour}',
+    day='${dom}',
+    month='${mon}',
+    day_of_week='${dow}',
+    id='my_job'
+)
+def my_job():
+    """TODO: replace with your task logic."""
+    print("Running scheduled job...")
+
+if __name__ == '__main__':
+    print(f"Scheduler starting. Next job: {desc}")
+    scheduler.start()
+
+# Install: pip install apscheduler`;
+
+  } else if(codeLang==='celery'){
+    code=`# In your celery.py or Django settings CELERY_BEAT_SCHEDULE:
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'my-task': {
+        'task': 'myapp.tasks.my_task',   # TODO: your task path
+        'schedule': crontab(
+            minute='${min}',
+            hour='${hour}',
+            day_of_month='${dom}',
+            month_of_year='${mon}',
+            day_of_week='${dow}',
+        ),
+    },
+}
+
+# In tasks.py:
+# from celery import shared_task
+# @shared_task
+# def my_task():
+#     """${desc}"""
+#     pass
+
+# Start: celery -A myapp beat -l info`;
+
+  } else if(codeLang==='node'){
+    const nodeExpr=`${min} ${hour} ${dom} ${mon} ${dow}`;
+    code=`const cron = require('node-cron');
+
+// Schedule: ${desc}
+// Cron: ${nodeExpr}
+cron.schedule('${nodeExpr}', () => {
+    console.log('Running scheduled task...');
+    // TODO: add your task logic here
+}, {
+    scheduled: true,
+    timezone: 'UTC',  // change to your timezone
+});
+
+console.log('Scheduler started: ${desc}');
+
+// Install: npm install node-cron`;
+
+  } else if(codeLang==='github'){
+    code=`# .github/workflows/scheduled.yml
+name: Scheduled Task
+
+on:
+  schedule:
+    # ${desc}
+    - cron: '${expr}'
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  run-task:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run task
+        run: python your_script.py  # TODO: change to your script
+
+# Note: GitHub Actions cron uses UTC timezone
+# Minimum interval is every 5 minutes`;
+
+  } else if(codeLang==='linux'){
+    code=`# Edit crontab: crontab -e
+# List crontab: crontab -l
+# Remove crontab: crontab -r
+
+# ${desc}
+${expr} /usr/bin/python3 /path/to/your/script.py
+
+# With logging:
+${expr} /usr/bin/python3 /path/to/script.py >> /var/log/myjob.log 2>&1
+
+# With virtual environment:
+${expr} /path/to/.venv/bin/python /path/to/script.py
+
+# Using a shell script:
+${expr} /bin/bash /path/to/run.sh
+
+# Useful crontab variables:
+# SHELL=/bin/bash
+# PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# MAILTO=you@example.com  # email output here`;
+  }
+
+  document.getElementById('code-output').textContent=code;
+}
+
+function copyExpr(){
+  navigator.clipboard.writeText(document.getElementById('expr-raw').textContent);
+  const btn=document.getElementById('copy-expr');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1300);
+}
+
+function copyCode(){
+  navigator.clipboard.writeText(document.getElementById('code-output').textContent);
+  const btn=document.getElementById('code-copy-btn');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1300);
+}
+
+// Init field bodies
+['min','hour','dom','mon','dow'].forEach(f=>renderFieldBody(f));
+loadPreset('0 9 * * 1-5', null); // weekdays 9am default
+</script>
+</body>
+</html>

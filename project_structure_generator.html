@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Project Structure Generator</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#1D9E75;--al:#E1F5EE;--am:#0F6E56;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;
+  --radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#0a3327;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2)}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.container{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 52px)}
+
+/* LEFT PANEL */
+.left{background:var(--bg);border-right:0.5px solid var(--border);padding:1.25rem;overflow-y:auto}
+.section{margin-bottom:1.25rem}
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-weight:600;margin-bottom:.6rem}
+
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.type-btn{padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;text-align:left;font-family:var(--sans);transition:all .15s}
+.type-btn:hover{border-color:var(--accent);background:var(--al)}
+.type-btn.active{border:1.5px solid var(--accent);background:var(--al)}
+.type-btn .ti{font-size:16px;display:block;margin-bottom:3px}
+.type-btn .tn{font-size:12px;font-weight:600;color:var(--text);display:block}
+.type-btn .td{font-size:10px;color:var(--text2)}
+
+.field-row{margin-bottom:.75rem}
+.field-row label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+.field-row input,.field-row select{width:100%;font-size:13px;padding:6px 10px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);font-family:var(--sans);outline:none}
+.field-row input:focus,.field-row select:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--al)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:12px;color:var(--text2)}
+.toggle{width:34px;height:18px;background:var(--border2);border-radius:9px;position:relative;cursor:pointer;border:none;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s}
+.toggle.on::after{left:18px}
+
+.gen-btn{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--sans);margin-top:.5rem;transition:background .15s}
+.gen-btn:hover{background:var(--am)}
+
+/* RIGHT PANEL */
+.right{padding:1.25rem 1.75rem;overflow-y:auto}
+.right-top{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap}
+.right-top h2{font-size:15px;font-weight:600;flex:1}
+.action-btn{font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.action-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.action-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.placeholder{padding:3rem;text-align:center;color:var(--text3);font-size:14px;line-height:2}
+
+/* File tree */
+.tree-panel{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem}
+.tree-head{padding:9px 14px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;background:var(--bg2)}
+.tree-body{padding:12px 14px;font-family:var(--mono);font-size:12px;line-height:1.9;overflow-x:auto}
+.tree-dir{color:var(--accent);font-weight:600}
+.tree-file{color:var(--text2)}
+.tree-desc{color:var(--text3);font-size:11px}
+
+/* File previews */
+.files-grid{display:grid;gap:10px}
+.file-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.file-head{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.file-name{font-size:12px;font-weight:600;font-family:var(--mono);flex:1}
+.file-desc{font-size:11px;color:var(--text2)}
+.copy-small{font-size:11px;padding:2px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s}
+.copy-small:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.copy-small.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.file-code{padding:12px 13px;font-size:11.5px;line-height:1.7;overflow-x:auto;color:var(--text);white-space:pre;font-family:var(--mono);max-height:320px;overflow-y:auto;background:var(--bg2)}
+
+/* Setup script */
+.setup-panel{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem}
+.setup-head{padding:9px 14px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px;background:var(--bg2)}
+.cmd-line{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)}
+.cmd-line:last-child{border-bottom:none}
+.cmd-num{width:20px;height:20px;border-radius:50%;background:var(--al);color:var(--accent);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cmd-text{font-family:var(--mono);font-size:12px;flex:1;color:var(--text)}
+.cmd-desc{font-size:11px;color:var(--text3);margin-left:28px;margin-bottom:4px}
+.setup-body{padding:10px 14px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📁 Project Structure Generator</h1>
+  <p>Pick a project type and get a complete folder structure, starter files, and setup commands</p>
+  <span class="badge">offline</span>
+</header>
+
+<div class="container">
+  <div class="left">
+    <div class="section">
+      <div class="section-label">Project type</div>
+      <div class="type-grid" id="type-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Project details</div>
+      <div class="field-row">
+        <label>Project name</label>
+        <input id="proj-name" type="text" value="my_project" placeholder="my_project"/>
+      </div>
+      <div class="field-row">
+        <label>Author name</label>
+        <input id="author" type="text" value="Your Name" placeholder="Your Name"/>
+      </div>
+      <div class="field-row">
+        <label>Python version</label>
+        <select id="py-ver">
+          <option>3.12</option><option>3.11</option><option>3.10</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Include extras</div>
+      <div id="extras-list"></div>
+    </div>
+
+    <button class="gen-btn" onclick="generate()">⚡ Generate Project</button>
+  </div>
+
+  <div class="right">
+    <div class="right-top">
+      <h2 id="right-title">Choose a project type to get started</h2>
+      <button class="action-btn" id="copy-all-btn" onclick="copyAll()" style="display:none">Copy all files</button>
+      <button class="action-btn" id="dl-btn" onclick="downloadZipInstructions()" style="display:none">📋 Setup guide</button>
+    </div>
+    <div id="output"><div class="placeholder">← Pick a project type on the left<br>fill in your project name<br>then hit <strong>Generate Project</strong></div></div>
+  </div>
+</div>
+
+<script>
+const TYPES = [
+  {id:'fastapi',    icon:'⚡', name:'FastAPI App',      desc:'REST API + DB'},
+  {id:'flask',      icon:'🌐', name:'Flask App',         desc:'Web + templates'},
+  {id:'streamlit',  icon:'🎈', name:'Streamlit App',     desc:'Data dashboard'},
+  {id:'cli',        icon:'💻', name:'CLI Tool',          desc:'argparse script'},
+  {id:'ai_agent',   icon:'🤖', name:'AI Agent',          desc:'LLM + tools'},
+  {id:'rag',        icon:'📚', name:'RAG Pipeline',      desc:'Vector search'},
+  {id:'scraper',    icon:'🕷️', name:'Web Scraper',       desc:'requests + bs4'},
+  {id:'ml',         icon:'🧠', name:'ML Project',        desc:'train + predict'},
+];
+
+const EXTRAS_BY_TYPE = {
+  fastapi:   ['docker','tests','github_actions','env_file','makefile'],
+  flask:     ['docker','tests','github_actions','env_file','makefile'],
+  streamlit: ['docker','tests','env_file'],
+  cli:       ['tests','github_actions','makefile'],
+  ai_agent:  ['docker','tests','env_file','makefile'],
+  rag:       ['docker','tests','env_file'],
+  scraper:   ['docker','tests','env_file'],
+  ml:        ['docker','tests','github_actions','env_file','makefile'],
+};
+
+const EXTRA_LABELS = {
+  docker:'🐳 Dockerfile + compose',
+  tests:'🧪 tests/ folder',
+  github_actions:'⚙️ GitHub Actions CI',
+  env_file:'.env + .env.example',
+  makefile:'Makefile',
+};
+
+let currentType = null;
+let extras = {};
+
+// Build type grid
+document.getElementById('type-grid').innerHTML = TYPES.map(t=>`
+  <button class="type-btn" id="type-${t.id}" onclick="setType('${t.id}')">
+    <span class="ti">${t.icon}</span>
+    <span class="tn">${t.name}</span>
+    <span class="td">${t.desc}</span>
+  </button>`).join('');
+
+function setType(id){
+  currentType=id;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('type-'+id).classList.add('active');
+  renderExtras(id);
+}
+
+function renderExtras(id){
+  const list = EXTRAS_BY_TYPE[id]||[];
+  extras={};
+  list.forEach(e=>extras[e]=true);
+  document.getElementById('extras-list').innerHTML = list.map(e=>`
+    <div class="toggle-row">
+      <span class="toggle-label">${EXTRA_LABELS[e]}</span>
+      <button class="toggle on" id="tog-${e}" onclick="toggleExtra('${e}')"></button>
+    </div>`).join('');
+}
+
+function toggleExtra(key){
+  extras[key]=!extras[key];
+  const btn=document.getElementById('tog-'+key);
+  btn.classList.toggle('on',extras[key]);
+}
+
+function n(){ return (document.getElementById('proj-name').value||'my_project').trim().replace(/[^a-z0-9_]/gi,'_'); }
+function author(){ return document.getElementById('author').value||'Your Name'; }
+function pyVer(){ return document.getElementById('py-ver').value; }
+
+// ── STRUCTURE DEFINITIONS ──
+function getStructure(type, name, auth, pyv){
+  const structures = {
+    fastapi: {
+      tree:[
+        {type:'dir', name:name, desc:'root'},
+        {type:'dir', name:`${name}/app`, desc:'main package'},
+        {type:'file',name:`${name}/app/__init__.py`, desc:''},
+        {type:'file',name:`${name}/app/main.py`, desc:'FastAPI app entry point'},
+        {type:'file',name:`${name}/app/models.py`, desc:'SQLAlchemy models'},
+        {type:'file',name:`${name}/app/schemas.py`, desc:'Pydantic schemas'},
+        {type:'file',name:`${name}/app/crud.py`, desc:'Database CRUD operations'},
+        {type:'dir', name:`${name}/app/routers`, desc:''},
+        {type:'file',name:`${name}/app/routers/__init__.py`, desc:''},
+        {type:'file',name:`${name}/app/routers/items.py`, desc:'Item endpoints'},
+        {type:'file',name:`${name}/app/database.py`, desc:'DB engine + session'},
+        {type:'file',name:`${name}/requirements.txt`, desc:'pip dependencies'},
+        {type:'file',name:`${name}/README.md`, desc:'project docs'},
+      ],
+      files:{
+        'app/main.py': `from fastapi import FastAPI
+from app.routers import items
+from app.database import engine, Base
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="${name}", version="1.0.0")
+app.include_router(items.router, prefix="/items", tags=["items"])
+
+@app.get("/health")
+def health(): return {"status": "ok"}`,
+
+        'app/database.py': `from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try: yield db
+    finally: db.close()`,
+
+        'app/models.py': `from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from app.database import Base
+from datetime import datetime
+
+class Item(Base):
+    __tablename__ = "items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(120), nullable=False)
+    description = Column(String(500), default="")
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)`,
+
+        'app/schemas.py': `from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+class ItemCreate(BaseModel):
+    name: str
+    description: str = ""
+
+class ItemResponse(ItemCreate):
+    id: int
+    active: bool
+    created_at: datetime
+    model_config = {"from_attributes": True}`,
+
+        'app/crud.py': `from sqlalchemy.orm import Session
+from app import models, schemas
+
+def get_items(db: Session): return db.query(models.Item).filter_by(active=True).all()
+def get_item(db: Session, item_id: int): return db.get(models.Item, item_id)
+def create_item(db: Session, item: schemas.ItemCreate):
+    obj = models.Item(**item.model_dump())
+    db.add(obj); db.commit(); db.refresh(obj); return obj`,
+
+        'app/routers/items.py': `from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app import crud, schemas
+from app.database import get_db
+from typing import List
+
+router = APIRouter()
+
+@router.get("/", response_model=List[schemas.ItemResponse])
+def list_items(db: Session = Depends(get_db)): return crud.get_items(db)
+
+@router.post("/", response_model=schemas.ItemResponse, status_code=201)
+def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db)):
+    return crud.create_item(db, item)
+
+@router.get("/{item_id}", response_model=schemas.ItemResponse)
+def get_item(item_id: int, db: Session = Depends(get_db)):
+    item = crud.get_item(db, item_id)
+    if not item: raise HTTPException(404, "Not found")
+    return item`,
+
+        'requirements.txt': `fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+sqlalchemy>=2.0.0
+pydantic>=2.0.0`,
+        'README.md': `# ${name}\n\n> TODO: describe your project here.\n\n## Setup\n\n\`\`\`bash\npip install -r requirements.txt\nuvicorn app.main:app --reload\n\`\`\`\n\nOpen http://localhost:8000/docs to explore the API.\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create and enter project folder'},
+        {cmd:`python -m venv .venv`, desc:`Create virtual environment`},
+        {cmd:`source .venv/bin/activate  # Windows: .venv\\Scripts\\activate`, desc:'Activate virtual environment'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`uvicorn app.main:app --reload`, desc:'Start dev server'},
+        {cmd:`open http://localhost:8000/docs`, desc:'Open interactive API docs'},
+      ]
+    },
+
+    flask: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'dir', name:`${name}/app`},
+        {type:'file',name:`${name}/app/__init__.py`, desc:'Flask app factory'},
+        {type:'file',name:`${name}/app/routes.py`, desc:'URL routes'},
+        {type:'file',name:`${name}/app/models.py`, desc:'SQLAlchemy models'},
+        {type:'dir', name:`${name}/app/templates`},
+        {type:'file',name:`${name}/app/templates/base.html`, desc:'Base template'},
+        {type:'file',name:`${name}/app/templates/index.html`, desc:'Home page'},
+        {type:'dir', name:`${name}/app/static`},
+        {type:'file',name:`${name}/run.py`, desc:'Entry point'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'app/__init__.py': `from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+import os
+
+db = SQLAlchemy()
+
+def create_app():
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL","sqlite:///app.db")
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-change-me")
+    db.init_app(app)
+    from app.routes import bp
+    app.register_blueprint(bp)
+    with app.app_context():
+        db.create_all()
+    return app`,
+
+        'app/routes.py': `from flask import Blueprint, render_template, jsonify, request
+from app.models import Item
+from app import db
+
+bp = Blueprint("main", __name__)
+
+@bp.route("/")
+def index(): return render_template("index.html", items=Item.query.all())
+
+@bp.route("/api/items", methods=["GET"])
+def list_items(): return jsonify([{"id":i.id,"name":i.name} for i in Item.query.all()])
+
+@bp.route("/api/items", methods=["POST"])
+def create_item():
+    data = request.get_json()
+    item = Item(name=data["name"])
+    db.session.add(item); db.session.commit()
+    return jsonify({"id": item.id, "name": item.name}), 201`,
+
+        'app/models.py': `from app import db
+from datetime import datetime
+
+class Item(db.Model):
+    __tablename__ = "items"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    def __repr__(self): return f"<Item {self.name}>"`,
+
+        'app/templates/base.html': `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><title>${name}</title>
+<style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem}</style>
+</head><body>{% block content %}{% endblock %}</body></html>`,
+
+        'app/templates/index.html': `{% extends "base.html" %}
+{% block content %}
+<h1>${name}</h1>
+<ul>{% for item in items %}<li>{{ item.name }}</li>{% endfor %}</ul>
+{% endblock %}`,
+
+        'run.py': `from app import create_app
+app = create_app()
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)`,
+        'requirements.txt': `flask>=3.0.0\nflask-sqlalchemy>=3.1.0`,
+        'README.md': `# ${name}\n\n## Setup\n\n\`\`\`bash\npip install -r requirements.txt\npython run.py\n\`\`\`\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create project folder'},
+        {cmd:`python -m venv .venv && source .venv/bin/activate`, desc:'Create + activate virtualenv'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`python run.py`, desc:'Start dev server at http://localhost:5000'},
+      ]
+    },
+
+    streamlit: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'file',name:`${name}/app.py`, desc:'Main Streamlit app'},
+        {type:'file',name:`${name}/utils.py`, desc:'Helper functions'},
+        {type:'dir', name:`${name}/data`, desc:'Data files go here'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'app.py': `import streamlit as st
+import pandas as pd
+from utils import load_data, process_data
+
+st.set_page_config(page_title="${name}", layout="wide")
+
+with st.sidebar:
+    st.header("Controls")
+    # TODO: add your sidebar controls here
+    uploaded = st.file_uploader("Upload CSV", type="csv")
+
+st.title("${name}")
+
+df = load_data(uploaded)
+if df is not None:
+    st.dataframe(df, use_container_width=True)
+    result = process_data(df)
+    st.bar_chart(result)
+else:
+    st.info("Upload a CSV file to get started.")`,
+
+        'utils.py': `import pandas as pd
+from typing import Optional
+
+def load_data(uploaded_file) -> Optional[pd.DataFrame]:
+    """Load data from uploaded file or return None."""
+    if uploaded_file is None: return None
+    return pd.read_csv(uploaded_file)
+
+def process_data(df: pd.DataFrame) -> pd.DataFrame:
+    """TODO: replace with your actual data processing logic."""
+    numeric = df.select_dtypes(include='number')
+    return numeric.mean()`,
+
+        'requirements.txt': `streamlit>=1.32.0\npandas>=2.0.0\nplotly>=5.0.0`,
+        'README.md': `# ${name}\n\n## Run\n\n\`\`\`bash\npip install -r requirements.txt\nstreamlit run app.py\n\`\`\`\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create project folder'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`streamlit run app.py`, desc:'Start app at http://localhost:8501'},
+      ]
+    },
+
+    cli: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'dir', name:`${name}/${name}`, desc:'Main package'},
+        {type:'file',name:`${name}/${name}/__init__.py`},
+        {type:'file',name:`${name}/${name}/cli.py`, desc:'CLI entry point'},
+        {type:'file',name:`${name}/${name}/core.py`, desc:'Business logic'},
+        {type:'file',name:`${name}/setup.py`, desc:'Makes it pip-installable'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        [`${name}/cli.py`]: `import argparse
+import sys
+from ${name}.core import run_task, get_info
+
+def main():
+    p = argparse.ArgumentParser(
+        prog="${name}",
+        description="TODO: describe what this tool does"
+    )
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    run_p = sub.add_parser("run", help="Run the main task")
+    run_p.add_argument("--input", "-i", required=True, help="Input file or value")
+    run_p.add_argument("--output", "-o", default="output.txt")
+    run_p.add_argument("--verbose", "-v", action="store_true")
+
+    info_p = sub.add_parser("info", help="Show info")
+    info_p.add_argument("target", nargs="?", default="all")
+
+    args = p.parse_args()
+    try:
+        if args.cmd == "run": run_task(args)
+        elif args.cmd == "info": get_info(args.target)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr); sys.exit(1)
+
+if __name__ == "__main__":
+    main()`,
+
+        [`${name}/core.py`]: `"""Core business logic for ${name}."""
+from pathlib import Path
+
+def run_task(args):
+    """TODO: implement your main task here."""
+    input_path = Path(args.input)
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input not found: {args.input}")
+    if args.verbose: print(f"Processing {args.input}...")
+    # TODO: do your work here
+    result = f"Processed: {args.input}"
+    Path(args.output).write_text(result)
+    print(f"Done. Output saved to {args.output}")
+
+def get_info(target: str):
+    """TODO: return info about a target."""
+    print(f"Info for: {target}")`,
+
+        'setup.py': `from setuptools import setup, find_packages
+setup(
+    name="${name}",
+    version="0.1.0",
+    author="${auth}",
+    packages=find_packages(),
+    entry_points={"console_scripts": ["${name}=${name}.cli:main"]},
+    python_requires=">=${pyv}",
+)`,
+        'requirements.txt': `# Add your dependencies here\n# click>=8.0.0  # alternative to argparse`,
+        'README.md': `# ${name}\n\n## Install\n\n\`\`\`bash\npip install -e .\n\`\`\`\n\n## Usage\n\n\`\`\`bash\n${name} run --input myfile.txt\n${name} info\n\`\`\`\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create project folder'},
+        {cmd:`pip install -e .`, desc:'Install CLI tool in dev mode (makes command available)'},
+        {cmd:`${name} --help`, desc:'Verify it works'},
+        {cmd:`${name} run --input myfile.txt`, desc:'Run the main command'},
+      ]
+    },
+
+    ai_agent: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'file',name:`${name}/agent.py`, desc:'Agent loop'},
+        {type:'file',name:`${name}/llm.py`, desc:'LLM router (swap provider here)'},
+        {type:'file',name:`${name}/tools.py`, desc:'Agent tools (@tool decorator)'},
+        {type:'file',name:`${name}/prompts.py`, desc:'System prompts + templates'},
+        {type:'file',name:`${name}/memory.py`, desc:'Conversation memory'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/.env.example`, desc:'API key template'},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'llm.py': `"""Swap LLM provider by changing LLM_PROVIDER env var."""
+import os, requests
+from typing import List, Dict
+
+PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")
+MODEL    = os.getenv("LLM_MODEL",    "claude-sonnet-4-20250514")
+API_KEY  = os.getenv("LLM_API_KEY",  "")
+
+def chat(messages: List[Dict], system="", max_tokens=1024) -> str:
+    if PROVIDER == "anthropic": return _anthropic(messages, system, max_tokens)
+    if PROVIDER == "openai":    return _openai(messages, system, max_tokens)
+    if PROVIDER == "ollama":    return _ollama(messages, system, max_tokens)
+    raise ValueError(f"Unknown: {PROVIDER}")
+
+def _anthropic(m, sys, mt):
+    p = {"model":MODEL,"max_tokens":mt,"messages":m}
+    if sys: p["system"]=sys
+    r = requests.post("https://api.anthropic.com/v1/messages", json=p,
+        headers={"x-api-key":API_KEY,"anthropic-version":"2023-06-01"})
+    r.raise_for_status(); return r.json()["content"][0]["text"]
+
+def _openai(m, sys, mt):
+    msgs=([{"role":"system","content":sys}] if sys else [])+m
+    r = requests.post("https://api.openai.com/v1/chat/completions",
+        json={"model":MODEL,"messages":msgs,"max_tokens":mt},
+        headers={"Authorization":f"Bearer {API_KEY}"})
+    r.raise_for_status(); return r.json()["choices"][0]["message"]["content"]
+
+def _ollama(m, sys, mt):
+    msgs=([{"role":"system","content":sys}] if sys else [])+m
+    r = requests.post("http://localhost:11434/api/chat",
+        json={"model":MODEL,"messages":msgs,"stream":False})
+    r.raise_for_status(); return r.json()["message"]["content"]`,
+
+        'tools.py': `"""Add tools here. Each becomes available to the agent."""
+from typing import Dict, Callable
+from datetime import datetime, timezone
+
+TOOLS: Dict[str, Callable] = {}
+
+def tool(name: str):
+    def dec(fn): TOOLS[name]=fn; return fn
+    return dec
+
+@tool("calculator")
+def calculator(expression: str) -> str:
+    """Evaluate a safe math expression."""
+    try: return str(eval(expression, {"__builtins__":{}}))
+    except Exception as e: return f"Error: {e}"
+
+@tool("get_time")
+def get_time() -> str:
+    """Return current UTC time."""
+    return datetime.now(timezone.utc).isoformat()
+
+# TODO: add your own tools here
+# @tool("read_file")
+# def read_file(path: str) -> str:
+#     return open(path).read()`,
+
+        'prompts.py': `"""System prompts and prompt templates."""
+
+AGENT_SYSTEM = """You are ${name}, a helpful AI agent.
+You have access to tools. To use a tool, respond with ONLY this JSON:
+{"tool": "tool_name", "args": {"arg": "value"}}
+When you have your final answer, start your reply with FINAL:
+
+Be concise and accurate.
+TODO: customise this system prompt for your use case."""
+
+# Add more prompt templates here
+TEMPLATES = {
+    "summarise": "Summarise the following in $max_words words:\\n\\n$text",
+    "classify":  "Classify into $categories:\\n\\n$text",
+}`,
+
+        'memory.py': `"""Simple conversation memory manager."""
+from typing import List, Dict
+from datetime import datetime
+
+class Memory:
+    def __init__(self, max_turns: int = 20):
+        self.max_turns = max_turns
+        self._history: List[Dict] = []
+
+    def add(self, role: str, content: str):
+        self._history.append({"role":role,"content":content,
+                               "_ts":datetime.utcnow().isoformat()})
+        if len(self._history) > self.max_turns * 2:
+            self._history = self._history[-self.max_turns*2:]
+
+    def messages(self) -> List[Dict]:
+        """Return history without internal metadata."""
+        return [{"role":m["role"],"content":m["content"]} for m in self._history]
+
+    def clear(self): self._history = []`,
+
+        'agent.py': `import json
+from llm import chat
+from tools import TOOLS
+from prompts import AGENT_SYSTEM
+from memory import Memory
+
+memory = Memory()
+
+def run_agent(user_input: str, max_steps: int = 8) -> str:
+    memory.add("user", user_input)
+    messages = memory.messages()
+
+    for _ in range(max_steps):
+        reply = chat(messages, system=AGENT_SYSTEM)
+        memory.add("assistant", reply)
+        messages = memory.messages()
+
+        if reply.strip().startswith("FINAL:"):
+            return reply.replace("FINAL:","").strip()
+
+        try:
+            parsed = json.loads(reply.strip())
+            fn = TOOLS.get(parsed.get("tool",""))
+            args = parsed.get("args", {})
+            result = fn(**args) if args else fn()
+            tool_msg = f"Tool result: {result}"
+            memory.add("user", tool_msg)
+            messages = memory.messages()
+        except json.JSONDecodeError:
+            return reply
+
+    return "Max steps reached."
+
+if __name__ == "__main__":
+    print("${name} Agent — type 'quit' to exit\\n")
+    while True:
+        q = input("You: ").strip()
+        if q.lower() in ("quit","exit","q"): break
+        if not q: continue
+        print(f"Agent: {run_agent(q)}\\n")`,
+
+        'requirements.txt': `requests>=2.31.0\npython-dotenv>=1.0.0`,
+        '.env.example': `# Copy this to .env and fill in your values
+LLM_PROVIDER=anthropic
+LLM_API_KEY=your-api-key-here
+LLM_MODEL=claude-sonnet-4-20250514
+# To use local Ollama (free): set LLM_PROVIDER=ollama`,
+        'README.md': `# ${name}\n\nAn AI agent with pluggable LLM backend.\n\n## Setup\n\n\`\`\`bash\ncp .env.example .env\n# Edit .env with your API key\npip install -r requirements.txt\npython agent.py\n\`\`\`\n\n## Swap the AI brain\n\nEdit \`.env\`:\n- \`LLM_PROVIDER=anthropic\` — use Claude\n- \`LLM_PROVIDER=openai\` — use GPT\n- \`LLM_PROVIDER=ollama\` — local, free, offline\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create project folder'},
+        {cmd:`cp .env.example .env`, desc:'Create your .env file'},
+        {cmd:`# Edit .env and add your API key`, desc:'Open .env in a text editor'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`python agent.py`, desc:'Start the agent REPL'},
+      ]
+    },
+
+    rag: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'file',name:`${name}/ingest.py`, desc:'Load + embed documents'},
+        {type:'file',name:`${name}/search.py`, desc:'Vector search'},
+        {type:'file',name:`${name}/ask.py`, desc:'RAG query interface'},
+        {type:'file',name:`${name}/llm.py`, desc:'LLM router'},
+        {type:'dir', name:`${name}/docs`, desc:'Put your documents here'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'llm.py': `import os, requests
+from typing import List, Dict
+PROVIDER=os.getenv("LLM_PROVIDER","anthropic")
+MODEL=os.getenv("LLM_MODEL","claude-sonnet-4-20250514")
+API_KEY=os.getenv("LLM_API_KEY","")
+def chat(messages:List[Dict],system="",max_tokens=1024)->str:
+    if PROVIDER=="anthropic":
+        p={"model":MODEL,"max_tokens":max_tokens,"messages":messages}
+        if system: p["system"]=system
+        r=requests.post("https://api.anthropic.com/v1/messages",json=p,
+            headers={"x-api-key":API_KEY,"anthropic-version":"2023-06-01"})
+        r.raise_for_status(); return r.json()["content"][0]["text"]
+    raise ValueError(f"Unknown: {PROVIDER}")`,
+
+        'ingest.py': `"""Load documents, chunk them, embed, and save."""
+import json, numpy as np
+from pathlib import Path
+
+# TODO: replace with a real embedding model
+# from sentence_transformers import SentenceTransformer
+# model = SentenceTransformer("all-MiniLM-L6-v2")
+# embed = lambda t: model.encode(t).tolist()
+import hashlib
+embed = lambda t: [int(hashlib.md5((t+str(i)).encode()).hexdigest(),16)%100/100 for i in range(64)]
+
+CHUNK_SIZE, OVERLAP = 300, 50
+
+def chunk_text(text, size=CHUNK_SIZE, overlap=OVERLAP):
+    words=text.split(); chunks=[]; i=0
+    while i<len(words):
+        chunks.append(" ".join(words[i:i+size])); i+=size-overlap
+    return chunks
+
+def ingest(docs_folder="docs", out="store"):
+    chunks, vectors, meta = [], [], []
+    for path in Path(docs_folder).glob("*.txt"):
+        text = path.read_text(encoding="utf-8")
+        for chunk in chunk_text(text):
+            chunks.append(chunk)
+            vectors.append(embed(chunk))
+            meta.append({"source": path.name})
+        print(f"Ingested: {path.name}")
+
+    Path(out).mkdir(exist_ok=True)
+    np.save(f"{out}/vectors.npy", np.array(vectors, dtype=np.float32))
+    json.dump({"chunks":chunks,"meta":meta}, open(f"{out}/store.json","w"))
+    print(f"Saved {len(chunks)} chunks to {out}/")
+
+if __name__ == "__main__":
+    ingest()`,
+
+        'search.py': `"""Semantic search over ingested vectors."""
+import json, numpy as np
+from pathlib import Path
+from typing import List, Tuple, Dict
+
+def load_store(path="store"):
+    vecs = np.load(f"{path}/vectors.npy")
+    data = json.load(open(f"{path}/store.json"))
+    return vecs, data["chunks"], data["meta"]
+
+# TODO: use the same embed function as ingest.py
+import hashlib
+embed = lambda t: [int(hashlib.md5((t+str(i)).encode()).hexdigest(),16)%100/100 for i in range(64)]
+
+def search(query:str, top_k:int=4) -> List[Tuple[float,str,Dict]]:
+    vecs, chunks, meta = load_store()
+    q = np.array(embed(query), dtype=np.float32)
+    scores = vecs @ q / (np.linalg.norm(vecs,axis=1)*np.linalg.norm(q)+1e-9)
+    idx = scores.argsort()[::-1][:top_k]
+    return [(float(scores[i]), chunks[i], meta[i]) for i in idx]`,
+
+        'ask.py': `"""Ask questions against your document collection."""
+from search import search
+from llm import chat
+
+def ask(question: str, top_k: int = 4) -> str:
+    results = search(question, top_k=top_k)
+    context = "\\n\\n---\\n\\n".join(chunk for _, chunk, _ in results)
+    messages = [{"role":"user","content":f"Context:\\n{context}\\n\\nQuestion: {question}"}]
+    return chat(messages, system="Answer only using the context provided. If unsure, say so.")
+
+if __name__ == "__main__":
+    print("RAG Q&A — type 'quit' to exit. Run ingest.py first.\\n")
+    while True:
+        q = input("Question: ").strip()
+        if q.lower() in ("quit","exit","q"): break
+        if not q: continue
+        print(f"Answer: {ask(q)}\\n")`,
+
+        'requirements.txt': `requests>=2.31.0\nnumpy>=1.26.0\npython-dotenv>=1.0.0\n# sentence-transformers>=2.0.0  # uncomment for real embeddings`,
+        'README.md': `# ${name}\n\n## Usage\n\n1. Put \`.txt\` files in \`docs/\`\n2. Run \`python ingest.py\` to embed them\n3. Run \`python ask.py\` to query\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name} && mkdir docs`, desc:'Create project + docs folder'},
+        {cmd:`# Add .txt files to the docs/ folder`, desc:'Put your documents in docs/'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`python ingest.py`, desc:'Embed your documents (run once)'},
+        {cmd:`python ask.py`, desc:'Start asking questions'},
+      ]
+    },
+
+    scraper: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'file',name:`${name}/scraper.py`, desc:'Main scraper'},
+        {type:'file',name:`${name}/parser.py`, desc:'HTML parsing helpers'},
+        {type:'file',name:`${name}/storage.py`, desc:'Save results'},
+        {type:'dir', name:`${name}/output`, desc:'Scraped data goes here'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'scraper.py': `"""${name} — web scraper."""
+import requests
+from bs4 import BeautifulSoup
+from parser import parse_page
+from storage import save_results
+import time
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; ${name}/1.0)"
+}
+
+def scrape(url: str) -> dict:
+    """Fetch and parse a single URL."""
+    resp = requests.get(url, headers=HEADERS, timeout=10)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    return parse_page(soup, url)
+
+def scrape_many(urls: list, delay: float = 1.0) -> list:
+    """Scrape multiple URLs with a polite delay."""
+    results = []
+    for i, url in enumerate(urls):
+        print(f"[{i+1}/{len(urls)}] {url}")
+        try:
+            results.append(scrape(url))
+        except Exception as e:
+            print(f"  Error: {e}")
+        time.sleep(delay)  # be polite!
+    return results
+
+if __name__ == "__main__":
+    # TODO: replace with your target URLs
+    urls = [
+        "https://example.com",
+    ]
+    results = scrape_many(urls)
+    save_results(results, "output/results.json")
+    print(f"Done. {len(results)} results saved.")`,
+
+        'parser.py': `from bs4 import BeautifulSoup
+
+def parse_page(soup: BeautifulSoup, url: str) -> dict:
+    """Extract data from a page. TODO: customise for your target site."""
+    return {
+        "url": url,
+        "title": soup.title.string if soup.title else "",
+        # TODO: add more fields:
+        # "price": soup.select_one(".price")?.get_text(strip=True),
+        # "links": [a["href"] for a in soup.select("a[href]")][:10],
+    }`,
+
+        'storage.py': `import json, csv
+from pathlib import Path
+
+def save_results(results: list, path: str):
+    """Save results as JSON or CSV based on file extension."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    if p.suffix == ".json":
+        p.write_text(json.dumps(results, indent=2, ensure_ascii=False))
+    elif p.suffix == ".csv" and results:
+        with open(p, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=results[0].keys())
+            w.writeheader(); w.writerows(results)
+    print(f"Saved {len(results)} records to {path}")`,
+
+        'requirements.txt': `requests>=2.31.0\nbeautifulsoup4>=4.12.0\nlxml>=5.0.0`,
+        'README.md': `# ${name}\n\n## Setup\n\n\`\`\`bash\npip install -r requirements.txt\npython scraper.py\n\`\`\`\n\n⚠️ Always check a site's robots.txt and Terms of Service before scraping.\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name}`, desc:'Create project folder'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install dependencies'},
+        {cmd:`python scraper.py`, desc:'Run the scraper'},
+        {cmd:`cat output/results.json`, desc:'View scraped results'},
+      ]
+    },
+
+    ml: {
+      tree:[
+        {type:'dir', name:name},
+        {type:'file',name:`${name}/train.py`, desc:'Model training script'},
+        {type:'file',name:`${name}/predict.py`, desc:'Run predictions'},
+        {type:'file',name:`${name}/features.py`, desc:'Feature engineering'},
+        {type:'file',name:`${name}/evaluate.py`, desc:'Metrics + evaluation'},
+        {type:'dir', name:`${name}/data`, desc:'Training data'},
+        {type:'dir', name:`${name}/models`, desc:'Saved model files'},
+        {type:'file',name:`${name}/requirements.txt`},
+        {type:'file',name:`${name}/README.md`},
+      ],
+      files:{
+        'features.py': `"""Feature engineering pipeline."""
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from pathlib import Path
+import joblib
+
+def load_data(path: str) -> pd.DataFrame:
+    """Load and do basic cleaning. TODO: add your data source."""
+    return pd.read_csv(path)
+
+def build_features(df: pd.DataFrame, fit=True, scaler=None):
+    """Transform raw data into model-ready features.
+    TODO: replace with your actual feature engineering."""
+    numeric = df.select_dtypes(include='number').fillna(0)
+    if fit:
+        scaler = StandardScaler()
+        X = scaler.fit_transform(numeric)
+        joblib.dump(scaler, "models/scaler.pkl")
+    else:
+        X = scaler.transform(numeric)
+    return X, scaler`,
+
+        'train.py': `"""Train and save the model."""
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier  # TODO: change model
+from sklearn.model_selection import train_test_split
+from pathlib import Path
+import joblib
+from features import load_data, build_features
+from evaluate import print_metrics
+
+Path("models").mkdir(exist_ok=True)
+
+# TODO: update path and target column
+df = load_data("data/train.csv")
+TARGET = "label"  # TODO: change to your target column name
+
+y = df[TARGET].values
+X, scaler = build_features(df.drop(columns=[TARGET]))
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# TODO: tune these hyperparameters
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+joblib.dump(model, "models/model.pkl")
+print("Model saved to models/model.pkl")
+print_metrics(model, X_val, y_val)`,
+
+        'predict.py': `"""Load saved model and run predictions."""
+import joblib, numpy as np, pandas as pd
+from features import build_features
+
+model = joblib.load("models/model.pkl")
+scaler = joblib.load("models/scaler.pkl")
+
+def predict(data: pd.DataFrame) -> np.ndarray:
+    """Run predictions on new data."""
+    X, _ = build_features(data, fit=False, scaler=scaler)
+    return model.predict(X)
+
+if __name__ == "__main__":
+    # TODO: load your real input data here
+    sample = pd.DataFrame({"feature1": [1.0, 2.0], "feature2": [3.0, 4.0]})
+    preds = predict(sample)
+    print("Predictions:", preds)`,
+
+        'evaluate.py': `"""Model evaluation utilities."""
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+def print_metrics(model, X_val, y_val):
+    preds = model.predict(X_val)
+    print(f"\\nValidation accuracy: {accuracy_score(y_val,preds):.3f}")
+    print("\\nClassification report:")
+    print(classification_report(y_val, preds))`,
+
+        'requirements.txt': `scikit-learn>=1.4.0\npandas>=2.0.0\nnumpy>=1.26.0\njoblib>=1.3.0\nmatplotlib>=3.8.0`,
+        'README.md': `# ${name}\n\n## Workflow\n\n1. Put training data in \`data/train.csv\`\n2. Edit \`features.py\` for your data\n3. Run \`python train.py\` to train\n4. Run \`python predict.py\` to predict\n\n## Author\n${auth}`,
+      },
+      setup:[
+        {cmd:`mkdir ${name} && cd ${name} && mkdir data models`, desc:'Create project structure'},
+        {cmd:`pip install -r requirements.txt`, desc:'Install ML libraries'},
+        {cmd:`# Add your data to data/train.csv`, desc:'Put your training data in place'},
+        {cmd:`python train.py`, desc:'Train the model'},
+        {cmd:`python predict.py`, desc:'Run predictions'},
+      ]
+    },
+  };
+  return structures[type]||null;
+}
+
+// EXTRAS
+function addExtras(files, extras, name, auth, pyv){
+  if(extras.docker){
+    files['Dockerfile']=`FROM python:${pyv}-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "app.py"]`;
+    files['docker-compose.yml']=`version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - .:/app`;
+  }
+  if(extras.tests){
+    files['tests/__init__.py']='';
+    files['tests/test_main.py']=`"""Basic test suite for ${name}."""
+import pytest
+
+def test_placeholder():
+    """TODO: replace with real tests."""
+    assert 1 + 1 == 2
+
+# Example:
+# from app.main import some_function
+# def test_some_function():
+#     result = some_function("input")
+#     assert result == "expected"`;
+  }
+  if(extras.github_actions){
+    files['.github/workflows/ci.yml']=`name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${pyv}"}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v`;
+  }
+  if(extras.env_file){
+    if(!files['.env.example']) files['.env.example']='# Add your environment variables here\n# SECRET_KEY=change-me\n# DATABASE_URL=sqlite:///app.db\n# API_KEY=your-api-key';
+    files['.gitignore']=`.env\n.venv/\n__pycache__/\n*.pyc\n*.db\n.DS_Store\ndist/\nbuild/\n*.egg-info/`;
+  }
+  if(extras.makefile){
+    files['Makefile']=`.PHONY: run test install clean\n\ninstall:\n\tpip install -r requirements.txt\n\nrun:\n\tpython -m ${name}\n\ntest:\n\tpython -m pytest tests/ -v\n\nclean:\n\tfind . -name "*.pyc" -delete\n\tfind . -name "__pycache__" -type d -exec rm -rf {} +`;
+  }
+  return files;
+}
+
+let generatedFiles = {};
+let generatedSetup = [];
+
+function generate(){
+  if(!currentType){ alert('Please pick a project type first.'); return; }
+  const name=n(), auth=author(), pyv=pyVer();
+  const struct=getStructure(currentType, name, auth, pyv);
+  if(!struct) return;
+
+  let files = {...struct.files};
+  files = addExtras(files, extras, name, auth, pyv);
+
+  // Add extras to tree
+  const tree = [...struct.tree];
+  if(extras.docker){ tree.push({type:'file',name:`${name}/Dockerfile`},{type:'file',name:`${name}/docker-compose.yml`}); }
+  if(extras.tests){ tree.push({type:'dir',name:`${name}/tests`},{type:'file',name:`${name}/tests/test_main.py`}); }
+  if(extras.github_actions){ tree.push({type:'file',name:`${name}/.github/workflows/ci.yml`}); }
+  if(extras.env_file){ tree.push({type:'file',name:`${name}/.env.example`},{type:'file',name:`${name}/.gitignore`}); }
+  if(extras.makefile){ tree.push({type:'file',name:`${name}/Makefile`}); }
+
+  generatedFiles = files;
+  generatedSetup = struct.setup;
+
+  const type=TYPES.find(t=>t.id===currentType);
+  document.getElementById('right-title').textContent=`${type.icon} ${name}/ — ${type.name}`;
+  document.getElementById('copy-all-btn').style.display='';
+  document.getElementById('dl-btn').style.display='';
+
+  // Render tree
+  let treeHTML='<div class="tree-panel"><div class="tree-head">📁 Folder structure</div><div class="tree-body">';
+  tree.forEach(item=>{
+    const depth=(item.name.match(/\//g)||[]).length;
+    const indent='  '.repeat(depth);
+    const base=item.name.split('/').pop();
+    if(item.type==='dir'){
+      treeHTML+=`${indent}<span class="tree-dir">📁 ${base}/</span>\n`;
+    } else {
+      treeHTML+=`${indent}<span class="tree-file">📄 ${base}</span>${item.desc?` <span class="tree-desc">— ${item.desc}</span>`:''}\n`;
+    }
+  });
+  treeHTML+='</div></div>';
+
+  // Render setup
+  let setupHTML='<div class="setup-panel"><div class="setup-head">▶️ Setup commands — run these in your terminal</div><div class="setup-body">';
+  generatedSetup.forEach((s,i)=>{
+    setupHTML+=`<div class="cmd-desc">${s.desc}</div>
+    <div class="cmd-line">
+      <div class="cmd-num">${i+1}</div>
+      <code class="cmd-text">${esc(s.cmd)}</code>
+      <button class="copy-small" onclick="cpCmd(this,'${esc(s.cmd)}')">copy</button>
+    </div>`;
+  });
+  setupHTML+='</div></div>';
+
+  // Render files
+  let filesHTML='<div class="files-grid">';
+  Object.entries(files).forEach(([fname, content])=>{
+    const id='f'+Math.random().toString(36).slice(2);
+    filesHTML+=`<div class="file-card">
+      <div class="file-head">
+        <span class="file-name">${fname}</span>
+        <button class="copy-small" onclick="cpFile(this,'${id}')">copy</button>
+      </div>
+      <pre class="file-code" id="${id}">${esc(content)}</pre>
+    </div>`;
+  });
+  filesHTML+='</div>';
+
+  document.getElementById('output').innerHTML=treeHTML+setupHTML+filesHTML;
+}
+
+function cpCmd(btn, text){
+  navigator.clipboard.writeText(text.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'));
+  btn.textContent='✓'; setTimeout(()=>btn.textContent='copy',1200);
+}
+
+function cpFile(btn, id){
+  const text=document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text);
+  btn.textContent='✓'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='copy';btn.classList.remove('done');},1200);
+}
+
+function copyAll(){
+  let out='';
+  Object.entries(generatedFiles).forEach(([fname,content])=>{
+    out+=`\n${'='.repeat(60)}\n# FILE: ${fname}\n${'='.repeat(60)}\n${content}\n`;
+  });
+  navigator.clipboard.writeText(out.trim());
+  const btn=document.getElementById('copy-all-btn');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy all files';btn.classList.remove('done');},1500);
+}
+
+function downloadZipInstructions(){
+  const name=n();
+  const steps=generatedSetup.map((s,i)=>`${i+1}. ${s.desc}\n   ${s.cmd}`).join('\n\n');
+  const fileList=Object.keys(generatedFiles).map(f=>`  - ${name}/${f}`).join('\n');
+  const guide=`${name} — Setup Guide\n${'='.repeat(50)}\n\nFiles to create:\n${fileList}\n\nSetup steps:\n${steps}\n\nGenerated by Project Structure Generator (offline tool)`;
+  const blob=new Blob([guide],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`${name}_setup_guide.txt`; a.click();
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

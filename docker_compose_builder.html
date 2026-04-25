@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Docker Compose Builder</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#185FA5;--al:#E6F1FB;--am:#0d3d6e;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#0a2540;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.layout{display:grid;grid-template-columns:1fr 460px;min-height:calc(100vh - 52px)}
+
+.left{padding:1.25rem 1.5rem;overflow-y:auto}
+.right{background:var(--bg);border-left:0.5px solid var(--border);display:flex;flex-direction:column}
+
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-weight:600;margin-bottom:.6rem}
+
+/* Service palette */
+.palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:7px;margin-bottom:1.25rem}
+.svc-btn{padding:9px 8px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);cursor:pointer;text-align:center;font-family:var(--sans);transition:all .15s}
+.svc-btn:hover{border-color:var(--accent);background:var(--al)}
+.svc-btn .si{font-size:20px;display:block;margin-bottom:3px}
+.svc-btn .sn{font-size:11px;font-weight:600;color:var(--text);display:block}
+.svc-btn .sd{font-size:10px;color:var(--text3)}
+
+/* Added services */
+.services-area{display:flex;flex-direction:column;gap:10px;margin-bottom:1.25rem}
+.svc-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.svc-card-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--border);background:var(--bg2);cursor:pointer}
+.svc-card-head .si2{font-size:16px}
+.svc-card-head .sn2{font-size:13px;font-weight:600;flex:1}
+.svc-card-head .img-tag{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.collapse-btn{font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;transition:transform .2s}
+.del-svc{width:24px;height:24px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--text3);transition:all .15s;display:flex;align-items:center;justify-content:center}
+.del-svc:hover{background:#fecaca;color:#b91c1c;border-color:#f87171}
+.svc-fields{padding:12px}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.field-group{display:flex;flex-direction:column;gap:3px}
+.field-group.full{grid-column:1/-1}
+.fl{font-size:11px;color:var(--text2);font-weight:500}
+.fi{font-size:12px;padding:5px 8px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);font-family:var(--mono);outline:none;width:100%}
+.fi:focus{border-color:var(--accent)}
+.tag-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tag{font-size:11px;padding:2px 8px;border-radius:10px;background:var(--al);color:var(--accent);display:flex;align-items:center;gap:4px;font-family:var(--mono)}
+.tag .tag-del{cursor:pointer;font-size:12px;line-height:1;color:var(--accent);background:none;border:none}
+.add-tag-row{display:flex;gap:5px;margin-top:4px}
+.add-tag-input{flex:1;font-size:12px;padding:4px 8px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);font-family:var(--mono);outline:none}
+.add-tag-btn{font-size:11px;padding:4px 10px;border-radius:var(--radius);border:0.5px solid var(--accent);background:var(--al);color:var(--accent);cursor:pointer;font-family:var(--sans)}
+
+/* Global options */
+.global-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:1rem}
+
+/* Right */
+.right-head{padding:9px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px}
+.right-head h3{font-size:13px;font-weight:600;flex:1}
+.copy-btn,.dl-btn{font-size:12px;padding:4px 13px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.copy-btn:hover,.copy-btn.done,.dl-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.yaml{flex:1;padding:14px;font-size:12px;line-height:1.75;overflow:auto;color:var(--text);white-space:pre;font-family:var(--mono);background:var(--bg2)}
+
+.cmd-panel{padding:10px 14px;border-top:0.5px solid var(--border);background:var(--bg)}
+.cmd-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:5px;font-weight:600}
+.cmd-row{display:flex;align-items:center;gap:6px;padding:4px 0}
+.cmd-text{font-family:var(--mono);font-size:12px;color:var(--text);flex:1}
+.cmd-copy{font-size:10px;padding:2px 8px;border-radius:8px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s}
+.cmd-copy:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.placeholder{padding:3rem;text-align:center;color:var(--text3);font-size:13px;line-height:2}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐳 Docker Compose Builder</h1>
+  <p>Click services to add them, configure ports and env vars, get a ready docker-compose.yml</p>
+  <span class="badge">offline</span>
+</header>
+<div class="layout">
+  <div class="left">
+    <div class="section-label" style="margin-bottom:.6rem">Click to add a service</div>
+    <div class="palette" id="palette"></div>
+
+    <div class="section-label">Project settings</div>
+    <div class="global-card">
+      <div class="field-grid">
+        <div class="field-group">
+          <span class="fl">Project name</span>
+          <input class="fi" id="proj-name" value="myapp" oninput="render()"/>
+        </div>
+        <div class="field-group">
+          <span class="fl">Compose version</span>
+          <select class="fi" id="compose-ver" onchange="render()" style="font-family:var(--sans)">
+            <option value="3.9">3.9 (recommended)</option>
+            <option value="3.8">3.8</option>
+            <option value="2.4">2.4 (legacy)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Added services</div>
+    <div class="services-area" id="services-area">
+      <div class="placeholder">Click services above to add them</div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="right-head">
+      <h3>docker-compose.yml</h3>
+      <button class="copy-btn" id="copy-btn" onclick="copyYaml()">Copy</button>
+      <button class="dl-btn" onclick="downloadYaml()">Download</button>
+    </div>
+    <pre class="yaml" id="yaml-output"><span style="color:var(--text3);font-family:var(--sans);font-size:13px">← Add services on the left</span></pre>
+    <div class="cmd-panel" id="cmd-panel" style="display:none">
+      <div class="cmd-label">Commands</div>
+      <div class="cmd-row"><span class="cmd-text">docker compose up -d</span><button class="cmd-copy" onclick="cpCmd(this,'docker compose up -d')">copy</button></div>
+      <div class="cmd-row"><span class="cmd-text">docker compose down</span><button class="cmd-copy" onclick="cpCmd(this,'docker compose down')">copy</button></div>
+      <div class="cmd-row"><span class="cmd-text">docker compose logs -f</span><button class="cmd-copy" onclick="cpCmd(this,'docker compose logs -f')">copy</button></div>
+      <div class="cmd-row"><span class="cmd-text">docker compose ps</span><button class="cmd-copy" onclick="cpCmd(this,'docker compose ps')">copy</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVICE_DEFS = [
+  {id:'app',      icon:'🚀', name:'App (custom)',  image:'${PROJECT}_app',  build:true,  ports:['8000:8000'], env:['DEBUG=1','SECRET_KEY=changeme'],         volumes:[],        depends:[]},
+  {id:'postgres', icon:'🐘', name:'PostgreSQL',   image:'postgres:16',     build:false, ports:['5432:5432'], env:['POSTGRES_DB=mydb','POSTGRES_USER=user','POSTGRES_PASSWORD=password'], volumes:['postgres_data:/var/lib/postgresql/data'], depends:[]},
+  {id:'mysql',    icon:'🐬', name:'MySQL',         image:'mysql:8',         build:false, ports:['3306:3306'], env:['MYSQL_ROOT_PASSWORD=rootpass','MYSQL_DATABASE=mydb','MYSQL_USER=user','MYSQL_PASSWORD=password'], volumes:['mysql_data:/var/lib/mysql'], depends:[]},
+  {id:'redis',    icon:'🔴', name:'Redis',         image:'redis:7-alpine',  build:false, ports:['6379:6379'], env:[],                                        volumes:['redis_data:/data'], depends:[]},
+  {id:'nginx',    icon:'🌐', name:'Nginx',         image:'nginx:alpine',    build:false, ports:['80:80','443:443'], env:[],                                   volumes:['./nginx.conf:/etc/nginx/nginx.conf:ro'], depends:['app']},
+  {id:'mongo',    icon:'🍃', name:'MongoDB',       image:'mongo:7',         build:false, ports:['27017:27017'], env:['MONGO_INITDB_ROOT_USERNAME=root','MONGO_INITDB_ROOT_PASSWORD=example'], volumes:['mongo_data:/data/db'], depends:[]},
+  {id:'rabbitmq', icon:'🐰', name:'RabbitMQ',      image:'rabbitmq:3-management', build:false, ports:['5672:5672','15672:15672'], env:['RABBITMQ_DEFAULT_USER=user','RABBITMQ_DEFAULT_PASS=password'], volumes:[], depends:[]},
+  {id:'celery',   icon:'⚙️', name:'Celery worker', image:'${PROJECT}_app',  build:true,  ports:[], env:['CELERY_BROKER_URL=redis://redis:6379/0'],          volumes:[],        depends:['redis','app']},
+  {id:'minio',    icon:'📦', name:'MinIO (S3)',     image:'minio/minio',     build:false, ports:['9000:9000','9001:9001'], env:['MINIO_ROOT_USER=minioadmin','MINIO_ROOT_PASSWORD=minioadmin'], volumes:['minio_data:/data'], depends:[]},
+  {id:'grafana',  icon:'📊', name:'Grafana',        image:'grafana/grafana', build:false, ports:['3000:3000'], env:['GF_SECURITY_ADMIN_PASSWORD=admin'],     volumes:['grafana_data:/var/lib/grafana'], depends:[]},
+  {id:'adminer',  icon:'🗃️', name:'Adminer (DB UI)',image:'adminer',        build:false, ports:['8080:8080'], env:[],                                        volumes:[],        depends:['postgres']},
+  {id:'elasticsearch',icon:'🔍',name:'Elasticsearch',image:'elasticsearch:8.12.0',build:false,ports:['9200:9200'],env:['discovery.type=single-node','xpack.security.enabled=false'],volumes:['es_data:/usr/share/elasticsearch/data'],depends:[]},
+];
+
+let services = []; // {defId, uid, fields:{name,image,ports:[],env:[],volumes:[],depends:[],restart}}
+let counter = 0;
+const collapse = {};
+
+// Build palette
+document.getElementById('palette').innerHTML = SERVICE_DEFS.map(d=>`
+  <button class="svc-btn" onclick="addService('${d.id}')">
+    <span class="si">${d.icon}</span>
+    <span class="sn">${d.name}</span>
+    <span class="sd">${d.image.replace('${PROJECT}','app')}</span>
+  </button>`).join('');
+
+function addService(defId){
+  const def = SERVICE_DEFS.find(d=>d.id===defId);
+  if(!def) return;
+  const uid = defId+'_'+(++counter);
+  const proj = document.getElementById('proj-name').value||'myapp';
+  services.push({
+    defId, uid,
+    name: defId==='app'?proj:defId==='celery'?'celery':defId,
+    image: def.build?def.image.replace('${PROJECT}',proj):def.image,
+    build: def.build,
+    ports: [...def.ports],
+    env:   [...def.env],
+    volumes:[...def.volumes],
+    depends:[...def.depends],
+    restart:'unless-stopped',
+  });
+  collapse[uid]=false;
+  renderServices();
+  render();
+}
+
+function removeService(uid){
+  services=services.filter(s=>s.uid!==uid);
+  renderServices(); render();
+}
+
+function toggleCollapse(uid){
+  collapse[uid]=!collapse[uid];
+  renderServices();
+}
+
+function renderServices(){
+  const area=document.getElementById('services-area');
+  if(!services.length){area.innerHTML='<div class="placeholder">Click services above to add them</div>';return;}
+  area.innerHTML=services.map(s=>{
+    const def=SERVICE_DEFS.find(d=>d.id===s.defId);
+    const col=collapse[s.uid];
+    return `<div class="svc-card">
+      <div class="svc-card-head" onclick="toggleCollapse('${s.uid}')">
+        <span class="si2">${def.icon}</span>
+        <span class="sn2">${s.name}</span>
+        <span class="img-tag">${s.image}</span>
+        <button class="collapse-btn" style="transform:rotate(${col?'-90deg':'0deg'})" onclick="event.stopPropagation();toggleCollapse('${s.uid}')">▾</button>
+        <button class="del-svc" onclick="event.stopPropagation();removeService('${s.uid}')">×</button>
+      </div>
+      ${!col?`<div class="svc-fields">${renderFields(s)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderFields(s){
+  const portTags=s.ports.map((p,i)=>`<span class="tag">${p}<button class="tag-del" onclick="removeTag('${s.uid}','ports',${i})">×</button></span>`).join('');
+  const envTags=s.env.map((e,i)=>`<span class="tag">${e.length>30?e.slice(0,30)+'…':e}<button class="tag-del" onclick="removeTag('${s.uid}','env',${i})">×</button></span>`).join('');
+  const volTags=s.volumes.map((v,i)=>`<span class="tag">${v.length>30?v.slice(0,30)+'…':v}<button class="tag-del" onclick="removeTag('${s.uid}','volumes',${i})">×</button></span>`).join('');
+  const depTags=s.depends.map((d,i)=>`<span class="tag">${d}<button class="tag-del" onclick="removeTag('${s.uid}','depends',${i})">×</button></span>`).join('');
+  return `<div class="field-grid">
+    <div class="field-group">
+      <span class="fl">Service name</span>
+      <input class="fi" value="${s.name}" onchange="updateField('${s.uid}','name',this.value)" oninput="updateField('${s.uid}','name',this.value)"/>
+    </div>
+    <div class="field-group">
+      <span class="fl">Image</span>
+      <input class="fi" value="${s.image}" onchange="updateField('${s.uid}','image',this.value)" oninput="updateField('${s.uid}','image',this.value)"/>
+    </div>
+    <div class="field-group">
+      <span class="fl">Restart policy</span>
+      <select class="fi" onchange="updateField('${s.uid}','restart',this.value)" style="font-family:var(--sans)">
+        ${['unless-stopped','always','on-failure','no'].map(r=>`<option ${s.restart===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field-group">
+      <span class="fl">Build from Dockerfile</span>
+      <select class="fi" onchange="updateField('${s.uid}','build',this.value==='true')" style="font-family:var(--sans)">
+        <option ${s.build?'selected':''} value="true">Yes — build: .</option>
+        <option ${!s.build?'selected':''} value="false">No — use image</option>
+      </select>
+    </div>
+    <div class="field-group full">
+      <span class="fl">Ports (host:container)</span>
+      <div class="tag-list">${portTags}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="ports-in-${s.uid}" placeholder="e.g. 8080:80"/>
+        <button class="add-tag-btn" onclick="addTag('${s.uid}','ports','ports-in-${s.uid}')">Add</button>
+      </div>
+    </div>
+    <div class="field-group full">
+      <span class="fl">Environment variables</span>
+      <div class="tag-list">${envTags}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="env-in-${s.uid}" placeholder="KEY=value"/>
+        <button class="add-tag-btn" onclick="addTag('${s.uid}','env','env-in-${s.uid}')">Add</button>
+      </div>
+    </div>
+    <div class="field-group full">
+      <span class="fl">Volumes</span>
+      <div class="tag-list">${volTags}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="vol-in-${s.uid}" placeholder="./local:/container or named_vol:/path"/>
+        <button class="add-tag-btn" onclick="addTag('${s.uid}','volumes','vol-in-${s.uid}')">Add</button>
+      </div>
+    </div>
+    <div class="field-group full">
+      <span class="fl">Depends on</span>
+      <div class="tag-list">${depTags}</div>
+      <div class="add-tag-row">
+        <input class="add-tag-input" id="dep-in-${s.uid}" placeholder="service name"/>
+        <button class="add-tag-btn" onclick="addTag('${s.uid}','depends','dep-in-${s.uid}')">Add</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateField(uid, field, val){
+  const s=services.find(s=>s.uid===uid);
+  if(s){ s[field]=val; render(); }
+}
+
+function addTag(uid, field, inputId){
+  const s=services.find(s=>s.uid===uid);
+  const el=document.getElementById(inputId);
+  if(s&&el&&el.value.trim()){ s[field].push(el.value.trim()); el.value=''; renderServices(); render(); }
+}
+
+function removeTag(uid, field, idx){
+  const s=services.find(s=>s.uid===uid);
+  if(s){ s[field].splice(idx,1); renderServices(); render(); }
+}
+
+// ── YAML GENERATION ──
+function render(){
+  if(!services.length){
+    document.getElementById('yaml-output').innerHTML='<span style="color:var(--text3);font-family:var(--sans);font-size:13px">← Add services on the left</span>';
+    document.getElementById('cmd-panel').style.display='none';
+    return;
+  }
+  const ver=document.getElementById('compose-ver').value;
+  let yaml=`version: "${ver}"\n\nservices:\n`;
+
+  services.forEach(s=>{
+    yaml+=`  ${s.name}:\n`;
+    if(s.build) yaml+=`    build: .\n`;
+    else         yaml+=`    image: ${s.image}\n`;
+    yaml+=`    restart: ${s.restart}\n`;
+    if(s.ports.length){ yaml+=`    ports:\n`; s.ports.forEach(p=>yaml+=`      - "${p}"\n`); }
+    if(s.env.length){ yaml+=`    environment:\n`; s.env.forEach(e=>yaml+=`      - ${e}\n`); }
+    if(s.volumes.length){ yaml+=`    volumes:\n`; s.volumes.forEach(v=>yaml+=`      - ${v}\n`); }
+    if(s.depends.length){ yaml+=`    depends_on:\n`; s.depends.forEach(d=>yaml+=`      - ${d}\n`); }
+    yaml+='\n';
+  });
+
+  // Named volumes
+  const namedVols=new Set();
+  services.forEach(s=>s.volumes.forEach(v=>{
+    if(!v.startsWith('./') && !v.startsWith('/') && v.includes(':'))
+      namedVols.add(v.split(':')[0]);
+  }));
+  if(namedVols.size){
+    yaml+=`volumes:\n`;
+    namedVols.forEach(v=>yaml+=`  ${v}:\n`);
+  }
+
+  document.getElementById('yaml-output').textContent=yaml;
+  document.getElementById('cmd-panel').style.display='';
+}
+
+function copyYaml(){
+  navigator.clipboard.writeText(document.getElementById('yaml-output').textContent);
+  const btn=document.getElementById('copy-btn');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1300);
+}
+
+function downloadYaml(){
+  const blob=new Blob([document.getElementById('yaml-output').textContent],{type:'text/yaml'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='docker-compose.yml'; a.click();
+}
+
+function cpCmd(btn, text){
+  navigator.clipboard.writeText(text);
+  btn.textContent='✓'; setTimeout(()=>btn.textContent='copy',1200);
+}
+
+// Default: add a basic app + postgres
+addService('app');
+addService('postgres');
+</script>
+</body>
+</html>

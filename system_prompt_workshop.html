@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>System Prompt Workshop</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#0F6E56;--al:#E1F5EE;--am:#07432f;
+  --warn:#854F0B;--warl:#FAEEDA;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#0a3327;--warl:#3a2000;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.layout{display:grid;grid-template-columns:1fr 420px;min-height:calc(100vh - 52px)}
+
+/* LEFT: editor */
+.editor{padding:1.25rem 1.5rem;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
+
+.section-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.sc-head{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.sc-head h3{font-size:13px;font-weight:600;flex:1}
+.sc-head .tip{font-size:11px;color:var(--text3)}
+.sc-body{padding:12px 13px}
+
+label.field-label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;margin-top:10px}
+label.field-label:first-child{margin-top:0}
+input.field,select.field,textarea.field{width:100%;font-size:13px;padding:7px 10px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--sans);outline:none;transition:border-color .15s}
+input.field:focus,select.field:focus,textarea.field:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--al);background:var(--bg)}
+textarea.field{resize:vertical;line-height:1.5}
+
+.tone-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}
+.tone-btn{padding:6px 4px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:11px;font-family:var(--sans);color:var(--text2);text-align:center;transition:all .15s}
+.tone-btn:hover{border-color:var(--accent);background:var(--al)}
+.tone-btn.active{border:1.5px solid var(--accent);background:var(--al);color:var(--accent);font-weight:600}
+
+.constraint-list{display:flex;flex-direction:column;gap:6px}
+.constraint-item{display:flex;gap:6px;align-items:center}
+.constraint-item input.field{flex:1;margin:0}
+.del-btn{width:28px;height:28px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-size:14px;color:var(--text3);transition:all .15s;flex-shrink:0}
+.del-btn:hover{background:#fecaca;border-color:#f87171;color:#b91c1c}
+.add-btn{font-size:12px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--accent);background:var(--al);color:var(--accent);cursor:pointer;font-family:var(--sans);transition:all .15s;margin-top:4px}
+.add-btn:hover{background:var(--accent);color:#fff}
+
+.example-pair{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:8px}
+.example-pair label.field-label{color:var(--accent);font-weight:600}
+
+/* RIGHT: preview */
+.preview{background:var(--bg);border-left:0.5px solid var(--border);display:flex;flex-direction:column}
+.preview-head{padding:9px 14px;border-bottom:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.preview-head h3{font-size:13px;font-weight:600;flex:1}
+.copy-btn{font-size:12px;padding:4px 14px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.copy-btn:hover,.copy-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.score-row{padding:10px 14px;border-bottom:0.5px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;background:var(--bg)}
+.score-pill{font-size:11px;padding:3px 10px;border-radius:10px;display:flex;align-items:center;gap:5px}
+.score-bar{height:4px;border-radius:2px;background:var(--border);width:60px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
+.score-fill.warn{background:var(--warn)}
+
+.preview-body{flex:1;padding:14px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--text);white-space:pre-wrap;background:var(--bg2)}
+.preview-section{color:var(--accent);font-weight:700}
+.placeholder-text{color:var(--text3);font-style:italic;font-family:var(--sans);text-align:center;padding:3rem 1rem}
+
+.token-count{padding:6px 14px;border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);display:flex;gap:12px;background:var(--bg)}
+
+.template-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
+.tpl-btn{font-size:11px;padding:4px 11px;border-radius:10px;border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;color:var(--text2);font-family:var(--sans);transition:all .15s}
+.tpl-btn:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>✍️ System Prompt Workshop</h1>
+  <p>Build, score, and export LLM system prompts — structured, clear, and ready to use</p>
+  <span class="badge">offline</span>
+</header>
+
+<div class="layout">
+  <div class="editor">
+
+    <!-- Templates -->
+    <div class="section-card">
+      <div class="sc-head"><h3>Quick start templates</h3></div>
+      <div class="sc-body">
+        <div class="template-row">
+          <button class="tpl-btn" onclick="loadTemplate('assistant')">💬 General assistant</button>
+          <button class="tpl-btn" onclick="loadTemplate('coder')">👩‍💻 Code assistant</button>
+          <button class="tpl-btn" onclick="loadTemplate('support')">🎧 Customer support</button>
+          <button class="tpl-btn" onclick="loadTemplate('analyst')">📊 Data analyst</button>
+          <button class="tpl-btn" onclick="loadTemplate('teacher')">📚 Tutor</button>
+          <button class="tpl-btn" onclick="loadTemplate('writer')">✍️ Content writer</button>
+          <button class="tpl-btn" onclick="loadTemplate('agent')">🤖 AI agent</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Identity -->
+    <div class="section-card">
+      <div class="sc-head"><h3>🎭 Identity & Role</h3><span class="tip">Who is this AI?</span></div>
+      <div class="sc-body">
+        <label class="field-label">Name / persona</label>
+        <input class="field" id="name" type="text" placeholder="e.g. Aria, DevBot, SupportAI" oninput="update()"/>
+        <label class="field-label">Role description</label>
+        <textarea class="field" id="role" rows="2" placeholder="e.g. You are an expert Python developer who helps developers write clean, efficient code." oninput="update()"></textarea>
+        <label class="field-label">Domain / expertise</label>
+        <input class="field" id="domain" type="text" placeholder="e.g. Python, FastAPI, databases, testing" oninput="update()"/>
+      </div>
+    </div>
+
+    <!-- Tone -->
+    <div class="section-card">
+      <div class="sc-head"><h3>🎨 Tone & Style</h3></div>
+      <div class="sc-body">
+        <div class="tone-grid" id="tone-grid"></div>
+        <label class="field-label" style="margin-top:10px">Additional style notes</label>
+        <input class="field" id="style-notes" type="text" placeholder="e.g. Use bullet points. Keep responses under 200 words." oninput="update()"/>
+      </div>
+    </div>
+
+    <!-- Output format -->
+    <div class="section-card">
+      <div class="sc-head"><h3>📋 Output Format</h3></div>
+      <div class="sc-body">
+        <label class="field-label">Response format</label>
+        <select class="field" id="format" onchange="update()">
+          <option value="">No specific format</option>
+          <option value="markdown">Markdown (headers, bullets, code blocks)</option>
+          <option value="plain">Plain text only — no markdown</option>
+          <option value="json">Always respond in JSON</option>
+          <option value="structured">Structured sections (Problem / Solution / Example)</option>
+          <option value="step">Step-by-step numbered lists</option>
+          <option value="concise">One paragraph maximum</option>
+        </select>
+        <label class="field-label">Language / locale</label>
+        <input class="field" id="lang" type="text" placeholder="e.g. English (UK), German, French" oninput="update()"/>
+      </div>
+    </div>
+
+    <!-- Constraints -->
+    <div class="section-card">
+      <div class="sc-head"><h3>🚫 Constraints & Rules</h3><span class="tip">What must it never do?</span></div>
+      <div class="sc-body">
+        <div class="constraint-list" id="must-not-list"></div>
+        <button class="add-btn" onclick="addConstraint('must-not-list','must-not')">+ Add constraint</button>
+        <label class="field-label" style="margin-top:12px">Always do</label>
+        <div class="constraint-list" id="must-do-list"></div>
+        <button class="add-btn" onclick="addConstraint('must-do-list','must-do')">+ Add rule</button>
+      </div>
+    </div>
+
+    <!-- Context -->
+    <div class="section-card">
+      <div class="sc-head"><h3>🌍 Context & Knowledge</h3></div>
+      <div class="sc-body">
+        <label class="field-label">Background context</label>
+        <textarea class="field" id="context" rows="3" placeholder="e.g. This assistant is embedded in a SaaS product for small business owners. Users are non-technical." oninput="update()"></textarea>
+        <label class="field-label">Knowledge cutoff / scope</label>
+        <input class="field" id="scope" type="text" placeholder="e.g. Only discuss topics related to our product. Do not give legal or medical advice." oninput="update()"/>
+      </div>
+    </div>
+
+    <!-- Few-shot examples -->
+    <div class="section-card">
+      <div class="sc-head"><h3>💡 Few-shot Examples</h3><span class="tip">Show don't just tell</span></div>
+      <div class="sc-body">
+        <div id="examples-list"></div>
+        <button class="add-btn" onclick="addExample()">+ Add example pair</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: live preview -->
+  <div class="preview">
+    <div class="preview-head">
+      <h3>Live preview</h3>
+      <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Copy prompt</button>
+    </div>
+    <div class="score-row" id="score-row"></div>
+    <div class="preview-body" id="preview-body"><span class="placeholder-text">Fill in the fields on the left to build your system prompt.</span></div>
+    <div class="token-count" id="token-count"></div>
+  </div>
+</div>
+
+<script>
+const TONES = [
+  {id:'professional',label:'Professional'},
+  {id:'friendly',label:'Friendly'},
+  {id:'concise',label:'Concise'},
+  {id:'detailed',label:'Detailed'},
+  {id:'formal',label:'Formal'},
+  {id:'casual',label:'Casual'},
+  {id:'empathetic',label:'Empathetic'},
+  {id:'technical',label:'Technical'},
+];
+let selectedTone = '';
+let mustNotItems = [];
+let mustDoItems  = [];
+let examples     = [];
+
+// Render tone grid
+document.getElementById('tone-grid').innerHTML = TONES.map(t=>`
+  <button class="tone-btn" id="tone-${t.id}" onclick="setTone('${t.id}')">${t.label}</button>`).join('');
+
+function setTone(id){
+  selectedTone = selectedTone===id?'':id;
+  document.querySelectorAll('.tone-btn').forEach(b=>b.classList.remove('active'));
+  if(selectedTone) document.getElementById('tone-'+selectedTone)?.classList.add('active');
+  update();
+}
+
+let mustNotCounter=0, mustDoCounter=0, exCounter=0;
+
+function addConstraint(listId, type){
+  const id = type+'-'+(type==='must-not'?++mustNotCounter:++mustDoCounter);
+  const arr = type==='must-not'?mustNotItems:mustDoItems;
+  arr.push({id, value:''});
+  renderConstraints();
+  update();
+}
+
+function renderConstraints(){
+  ['must-not','must-do'].forEach(type=>{
+    const arr = type==='must-not'?mustNotItems:mustDoItems;
+    const listId = type+'-list';
+    document.getElementById(listId).innerHTML = arr.map(item=>`
+      <div class="constraint-item">
+        <input class="field" type="text" placeholder="${type==='must-not'?'e.g. Never make up facts or URLs':'e.g. Always cite your sources'}"
+          value="${esc(item.value)}" onchange="updateConstraint('${type}','${item.id}',this.value)" oninput="updateConstraint('${type}','${item.id}',this.value)"/>
+        <button class="del-btn" onclick="removeConstraint('${type}','${item.id}')">×</button>
+      </div>`).join('');
+  });
+}
+
+function updateConstraint(type, id, val){
+  const arr = type==='must-not'?mustNotItems:mustDoItems;
+  const item = arr.find(i=>i.id===id);
+  if(item){ item.value=val; update(); }
+}
+
+function removeConstraint(type, id){
+  if(type==='must-not') mustNotItems=mustNotItems.filter(i=>i.id!==id);
+  else mustDoItems=mustDoItems.filter(i=>i.id!==id);
+  renderConstraints(); update();
+}
+
+function addExample(){
+  const id='ex-'+(++exCounter);
+  examples.push({id, user:'', assistant:''});
+  renderExamples(); update();
+}
+
+function renderExamples(){
+  document.getElementById('examples-list').innerHTML = examples.map(ex=>`
+    <div class="example-pair">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:var(--accent)">Example</span>
+        <button class="del-btn" onclick="removeExample('${ex.id}')">×</button>
+      </div>
+      <label class="field-label">User says:</label>
+      <textarea class="field" rows="2" placeholder="What the user might ask..."
+        onchange="updateEx('${ex.id}','user',this.value)" oninput="updateEx('${ex.id}','user',this.value)">${esc(ex.user)}</textarea>
+      <label class="field-label">Ideal response:</label>
+      <textarea class="field" rows="3" placeholder="How the AI should respond..."
+        onchange="updateEx('${ex.id}','assistant',this.value)" oninput="updateEx('${ex.id}','assistant',this.value)">${esc(ex.assistant)}</textarea>
+    </div>`).join('');
+}
+
+function updateEx(id, field, val){
+  const ex = examples.find(e=>e.id===id);
+  if(ex){ ex[field]=val; update(); }
+}
+
+function removeExample(id){
+  examples=examples.filter(e=>e.id!==id);
+  renderExamples(); update();
+}
+
+// ── BUILD PROMPT ──
+function buildPrompt(){
+  const name   = v('name');
+  const role   = v('role');
+  const domain = v('domain');
+  const styleNotes = v('style-notes');
+  const format = document.getElementById('format').value;
+  const lang   = v('lang');
+  const context= v('context');
+  const scope  = v('scope');
+
+  const parts = [];
+
+  if(role) parts.push(role);
+  else if(name) parts.push(`You are ${name}, a helpful AI assistant.`);
+
+  if(domain) parts.push(`Your areas of expertise include: ${domain}.`);
+
+  if(selectedTone){
+    const toneDesc = {
+      professional:'Maintain a professional, polished tone at all times.',
+      friendly:'Be warm, approachable, and encouraging.',
+      concise:'Be brief and to the point. Avoid unnecessary words.',
+      detailed:'Provide thorough, in-depth responses with examples.',
+      formal:'Use formal language and avoid contractions or slang.',
+      casual:'Use a relaxed, conversational tone.',
+      empathetic:'Show understanding and empathy. Acknowledge feelings before giving information.',
+      technical:'Use precise technical language appropriate for expert audiences.',
+    };
+    if(toneDesc[selectedTone]) parts.push(toneDesc[selectedTone]);
+  }
+
+  if(styleNotes) parts.push(styleNotes);
+
+  const formatDesc = {
+    markdown:'Format all responses using Markdown: use headers (##), bullet points, and code blocks (```language) where appropriate.',
+    plain:'Respond in plain text only. Do not use any markdown, asterisks, or special formatting.',
+    json:'Always respond with valid JSON only. Do not include any prose outside the JSON object.',
+    structured:'Structure every response with clear sections: **Problem**, **Solution**, and **Example**.',
+    step:'Format responses as numbered step-by-step instructions.',
+    concise:'Keep every response to one paragraph or fewer.',
+  };
+  if(format && formatDesc[format]) parts.push(formatDesc[format]);
+  if(lang) parts.push(`Always respond in ${lang}.`);
+
+  if(context) parts.push(`\nContext:\n${context}`);
+  if(scope) parts.push(scope);
+
+  const mustNots = mustNotItems.map(i=>i.value).filter(Boolean);
+  const mustDos  = mustDoItems.map(i=>i.value).filter(Boolean);
+
+  if(mustDos.length){
+    parts.push('\nAlways:\n'+mustDos.map(r=>`- ${r}`).join('\n'));
+  }
+  if(mustNots.length){
+    parts.push('\nNever:\n'+mustNots.map(r=>`- ${r}`).join('\n'));
+  }
+
+  const exs = examples.filter(e=>e.user&&e.assistant);
+  if(exs.length){
+    parts.push('\n---\nExamples:');
+    exs.forEach(ex=>{
+      parts.push(`\nUser: ${ex.user}\nAssistant: ${ex.assistant}`);
+    });
+    parts.push('---');
+  }
+
+  return parts.filter(Boolean).join('\n\n');
+}
+
+// ── SCORE ──
+function scorePrompt(prompt){
+  const scores = [];
+  const role = v('role');
+  const mustNots = mustNotItems.map(i=>i.value).filter(Boolean);
+  const mustDos  = mustDoItems.map(i=>i.value).filter(Boolean);
+  const exs = examples.filter(e=>e.user&&e.assistant);
+  const words = prompt.split(/\s+/).length;
+
+  scores.push({label:'Role clarity', val: role.length>20?100:role.length>0?50:0});
+  scores.push({label:'Constraints',  val: (mustNots.length+mustDos.length)>0? Math.min(100,(mustNots.length+mustDos.length)*25):0});
+  scores.push({label:'Examples',     val: exs.length>0?Math.min(100,exs.length*50):0});
+  scores.push({label:'Length',       val: words<10?20:words<30?60:words<300?100:words<600?80:50, warn:words>600});
+  scores.push({label:'Tone set',     val: selectedTone?100:0});
+  return scores;
+}
+
+function update(){
+  const prompt = buildPrompt();
+  const el = document.getElementById('preview-body');
+
+  if(!prompt.trim()){
+    el.innerHTML='<span class="placeholder-text">Fill in the fields on the left to build your system prompt.</span>';
+    document.getElementById('score-row').innerHTML='';
+    document.getElementById('token-count').textContent='';
+    return;
+  }
+
+  el.textContent = prompt;
+
+  const scores = scorePrompt(prompt);
+  const avg = Math.round(scores.reduce((a,s)=>a+s.val,0)/scores.length);
+  document.getElementById('score-row').innerHTML = scores.map(s=>`
+    <div class="score-pill">
+      <span style="font-size:11px;color:var(--text2)">${s.label}</span>
+      <div class="score-bar"><div class="score-fill${s.warn?' warn':''}" style="width:${s.val}%"></div></div>
+      <span style="font-size:10px;color:${s.val>60?'var(--accent)':s.val>30?'var(--warn)':'var(--text3)'}">${s.val}%</span>
+    </div>`).join('')+`<span style="margin-left:auto;font-size:12px;font-weight:600;color:${avg>70?'var(--accent)':avg>40?'var(--warn)':'var(--text3)'}">Score: ${avg}/100</span>`;
+
+  const words = prompt.split(/\s+/).length;
+  const tokens = Math.round(words*1.3);
+  document.getElementById('token-count').innerHTML =
+    `~${words} words &nbsp;·&nbsp; ~${tokens} tokens &nbsp;·&nbsp; Est. cost per call: Claude ~$${(tokens*3/1000000).toFixed(5)} · GPT-4o ~$${(tokens*5/1000000).toFixed(5)}`;
+}
+
+function copyPrompt(){
+  const prompt = buildPrompt();
+  navigator.clipboard.writeText(prompt);
+  const btn=document.getElementById('copy-btn');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy prompt';btn.classList.remove('done');},1400);
+}
+
+// ── TEMPLATES ──
+const TEMPLATES = {
+  assistant:{name:'Aria',role:'You are Aria, a helpful and knowledgeable AI assistant. Your goal is to provide accurate, thoughtful, and genuinely useful responses.',domain:'general knowledge, research, writing, analysis',tone:'friendly',styleNotes:'Use examples where helpful. Acknowledge uncertainty when you are unsure.',format:'markdown',mustNots:['Make up facts, URLs, or citations','Claim to be human if sincerely asked','Provide medical, legal, or financial advice as a professional would'],mustDos:['Say "I\'m not sure" when uncertain','Offer to explain further if the user needs clarification'],context:'',scope:''},
+  coder:{name:'DevBot',role:'You are DevBot, an expert software engineer assistant. You help developers write, review, debug, and improve code across multiple languages.',domain:'Python, JavaScript, TypeScript, SQL, APIs, system design, testing, DevOps',tone:'technical',styleNotes:'Always include working code examples. Explain the "why" not just the "what". Point out potential edge cases.',format:'markdown',mustNots:['Produce code with security vulnerabilities without warning','Skip error handling in examples','Give untested pseudocode without labelling it as such'],mustDos:['Include type hints in Python code','Add brief comments explaining non-obvious logic','Mention alternative approaches when relevant'],context:'',scope:'Only discuss software engineering topics.'},
+  support:{name:'',role:'You are a friendly and empathetic customer support agent. Your goal is to resolve customer issues efficiently while making them feel heard and valued.',domain:'product support, troubleshooting, billing, returns',tone:'empathetic',styleNotes:'Acknowledge the customer\'s frustration before offering solutions. Keep responses clear and jargon-free.',format:'plain',mustNots:['Promise things you cannot guarantee','Share information about other customers','Argue with or dismiss customer complaints'],mustDos:['Apologise when appropriate','Offer a concrete next step in every response','Escalate to a human agent if the issue cannot be resolved'],context:'This assistant handles support for a SaaS product. Customers may be frustrated.',scope:''},
+  analyst:{name:'',role:'You are a data analyst assistant. You help users understand, query, and interpret data. You explain statistical concepts clearly.',domain:'SQL, Python (pandas, numpy), statistics, data visualisation, Excel',tone:'professional',styleNotes:'Show your reasoning step by step. Use tables to summarise data when possible.',format:'structured',mustNots:['Draw conclusions without sufficient data','Overstate statistical significance','Present correlation as causation'],mustDos:['State your assumptions explicitly','Suggest the right chart type for different data shapes','Point out data quality issues if you spot them'],context:'',scope:''},
+  teacher:{name:'',role:'You are a patient and encouraging tutor. You adapt your teaching style to the learner\'s level and help them understand concepts deeply rather than just giving answers.',domain:'', tone:'friendly',styleNotes:'Use analogies and real-world examples. Ask checking questions to confirm understanding.',format:'step',mustNots:['Just give answers without explanation','Use jargon without defining it','Make the learner feel bad for not knowing something'],mustDos:['Break complex ideas into smaller steps','Celebrate progress and effort','Check understanding before moving on'],context:'',scope:''},
+  writer:{name:'',role:'You are a skilled content writer and editor. You help create engaging, clear, and well-structured written content across formats.',domain:'blog posts, articles, social media, emails, marketing copy, technical documentation',tone:'professional',styleNotes:'Match the requested tone and audience. Prioritise clarity and flow. Suggest improvements to drafts.',format:'markdown',mustNots:['Reproduce copyrighted text verbatim','Use excessive filler phrases like "Certainly!" or "Great question!"','Over-use exclamation marks'],mustDos:['Offer alternative phrasings when asked to edit','Respect the writer\'s voice when editing','Flag potential factual claims that should be verified'],context:'',scope:''},
+  agent:{name:'',role:'You are an autonomous AI agent. You can use tools to complete tasks. Think step by step, plan before acting, and always explain your reasoning.',domain:'',tone:'professional',styleNotes:'Before each action, state what you are doing and why. After each tool result, reflect on whether the goal has been achieved.',format:'structured',mustNots:['Take irreversible actions without confirming with the user','Loop indefinitely — stop after 10 steps and report status','Ignore tool errors'],mustDos:['Start with a plan before calling any tools','Report the final answer clearly when done','Ask for clarification if the task is ambiguous'],context:'',scope:'To use a tool, respond with JSON: {"tool": "tool_name", "args": {}}. When finished, start your reply with FINAL:'},
+};
+
+function loadTemplate(key){
+  const t = TEMPLATES[key];
+  if(!t) return;
+  sv('name',t.name); sv('role',t.role); sv('domain',t.domain);
+  sv('style-notes',t.styleNotes); sv('lang',''); sv('context',t.context); sv('scope',t.scope);
+  document.getElementById('format').value=t.format||'';
+  setTone(t.tone||'');
+  mustNotItems = t.mustNots.map((v,i)=>({id:'must-not-'+(++mustNotCounter),value:v}));
+  mustDoItems  = t.mustDos.map((v,i)=>({id:'must-do-'+(++mustDoCounter),value:v}));
+  examples=[];
+  renderConstraints(); renderExamples(); update();
+}
+
+function v(id){ return document.getElementById(id)?.value?.trim()||''; }
+function sv(id,val){ const el=document.getElementById(id); if(el) el.value=val; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Init
+loadTemplate('assistant');
+</script>
+</body>
+</html>

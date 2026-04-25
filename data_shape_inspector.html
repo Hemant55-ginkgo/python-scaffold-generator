@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Data Shape Inspector</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#993556;--al:#FBEAF0;--am:#6e1f38;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#3a1020;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.container{display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 52px)}
+
+/* LEFT */
+.left{background:var(--bg);border-right:0.5px solid var(--border);display:flex;flex-direction:column;padding:1.25rem}
+.left h2{font-size:14px;font-weight:600;margin-bottom:.75rem}
+
+.format-tabs{display:flex;gap:6px;margin-bottom:.75rem}
+.ftab{padding:5px 14px;border-radius:20px;border:0.5px solid var(--border2);font-size:12px;font-family:var(--sans);cursor:pointer;background:transparent;color:var(--text2);transition:all .15s}
+.ftab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.paste-area{width:100%;flex:1;min-height:280px;font-family:var(--mono);font-size:12px;padding:12px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);resize:vertical;outline:none;line-height:1.6}
+.paste-area:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--al)}
+
+.options-row{display:flex;align-items:center;gap:12px;margin-top:.75rem;flex-wrap:wrap}
+.opt-label{font-size:12px;color:var(--text2)}
+.opt-input{font-size:12px;padding:4px 8px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);font-family:var(--sans)}
+.inspect-btn{padding:8px 22px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:background .15s;margin-left:auto}
+.inspect-btn:hover{background:var(--am)}
+
+.sample-btns{display:flex;gap:6px;margin-bottom:.6rem;flex-wrap:wrap}
+.sample-btn{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.sample-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* RIGHT */
+.right{padding:1.25rem 1.75rem;overflow-y:auto}
+.placeholder{padding:3rem;text-align:center;color:var(--text3);font-size:14px;line-height:2}
+
+/* Output tabs */
+.out-tabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+.otab{padding:5px 14px;border-radius:20px;border:0.5px solid var(--border2);font-size:12px;font-family:var(--sans);cursor:pointer;background:var(--bg2);color:var(--text2);transition:all .15s}
+.otab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Stats cards */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:1rem}
+.stat-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.stat-val{font-size:20px;font-weight:700;color:var(--accent)}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* Field table */
+.field-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem}
+.field-table th{text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--border2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600;background:var(--bg2)}
+.field-table td{padding:6px 10px;border-bottom:0.5px solid var(--border);vertical-align:top}
+.field-table tr:hover td{background:var(--bg2)}
+.type-pill{font-size:10px;padding:1px 7px;border-radius:8px;font-weight:600;white-space:nowrap}
+.tp-str{background:#E6F1FB;color:#185FA5}
+.tp-int{background:#E1F5EE;color:#1D9E75}
+.tp-float{background:#E1F5EE;color:#0F6E56}
+.tp-bool{background:#FAEEDA;color:#854F0B}
+.tp-null{background:#f0efe9;color:#999}
+.tp-arr{background:#EEEDFE;color:#534AB7}
+.tp-obj{background:#FBEAF0;color:#993556}
+.tp-date{background:#fff3e0;color:#e65100}
+.nullable{font-size:10px;color:var(--text3)}
+.sample-val{color:var(--text3);font-family:var(--mono);font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Code output */
+.code-block{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem}
+.code-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--border);background:var(--bg)}
+.code-head-title{font-size:12px;font-weight:600;flex:1}
+.copy-btn{font-size:11px;padding:3px 12px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s}
+.copy-btn:hover,.copy-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.out-code{padding:12px;font-size:11.5px;line-height:1.7;overflow-x:auto;color:var(--text);white-space:pre;font-family:var(--mono);max-height:400px;overflow-y:auto}
+
+.error-box{background:#fff0f0;border:0.5px solid #fca5a5;border-radius:var(--radius);padding:12px;font-size:13px;color:#b91c1c;margin-bottom:1rem}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔍 Data Shape Inspector</h1>
+  <p>Paste JSON or CSV → instantly get Pydantic schemas, SQLAlchemy models, pandas code, and TypeScript types</p>
+  <span class="badge">offline</span>
+</header>
+
+<div class="container">
+  <div class="left">
+    <h2>Paste your data</h2>
+    <div class="format-tabs">
+      <button class="ftab active" onclick="setFormat('json')">JSON</button>
+      <button class="ftab" onclick="setFormat('csv')">CSV</button>
+    </div>
+    <div class="sample-btns" id="sample-btns"></div>
+    <textarea class="paste-area" id="input-area" placeholder='Paste JSON or CSV here...\n\nExample JSON:\n[\n  {"id": 1, "name": "Alice", "email": "alice@example.com", "age": 30, "active": true}\n]'></textarea>
+    <div class="options-row">
+      <span class="opt-label">Class name:</span>
+      <input class="opt-input" id="class-name" value="MyModel" type="text"/>
+      <button class="inspect-btn" onclick="inspect()">🔍 Inspect</button>
+    </div>
+  </div>
+
+  <div class="right" id="right">
+    <div class="placeholder">← Paste JSON or CSV data on the left<br>then click <strong>Inspect</strong><br><br>
+    <span style="font-size:12px">Generates: Pydantic schema · SQLAlchemy model<br>pandas code · TypeScript interface · field stats</span></div>
+  </div>
+</div>
+
+<script>
+let currentFormat = 'json';
+
+const SAMPLES = {
+  json: [
+    {label:'Users',   data:JSON.stringify([{id:1,name:"Alice",email:"alice@example.com",age:30,active:true,role:"admin",created_at:"2024-01-15T10:30:00Z"},{id:2,name:"Bob",email:"bob@example.com",age:25,active:false,role:"user",created_at:"2024-02-20T14:00:00Z"}],null,2)},
+    {label:'Products',data:JSON.stringify([{id:101,title:"Laptop",price:999.99,stock:50,category:"Electronics",tags:["tech","sale"],in_stock:true},{id:102,title:"Desk",price:299.50,stock:0,category:"Furniture",tags:["home"],in_stock:false}],null,2)},
+    {label:'Orders',  data:JSON.stringify([{order_id:"ORD-001",customer_id:1,total:1299.99,status:"shipped",items:[{sku:"LAP-001",qty:1,price:999.99}],created_at:"2024-03-01"}],null,2)},
+  ],
+  csv: [
+    {label:'Sales',data:`date,product,region,revenue,units,discount\n2024-01-01,Widget A,North,1500.50,30,0.1\n2024-01-01,Widget B,South,850.00,17,0.0\n2024-01-02,Widget A,East,2100.75,42,0.15`},
+    {label:'Employees',data:`employee_id,first_name,last_name,department,salary,start_date,active\n1,Alice,Smith,Engineering,95000,2021-03-15,true\n2,Bob,Jones,Marketing,72000,2022-07-01,true\n3,Carol,Lee,Engineering,110000,2020-01-10,false`},
+  ],
+};
+
+function setFormat(fmt){
+  currentFormat=fmt;
+  document.querySelectorAll('.ftab').forEach((b,i)=>b.classList.toggle('active',['json','csv'][i]===fmt));
+  document.getElementById('input-area').placeholder=fmt==='json'?'Paste JSON array or object here...':'Paste CSV data here (with header row)...';
+  renderSamples();
+}
+
+function renderSamples(){
+  document.getElementById('sample-btns').innerHTML=
+    (SAMPLES[currentFormat]||[]).map(s=>`<button class="sample-btn" onclick="loadSample(${JSON.stringify(s.data)})">${s.label}</button>`).join('');
+}
+
+function loadSample(data){ document.getElementById('input-area').value=data; }
+
+renderSamples();
+
+// ── PARSING ──
+function parseInput(text, fmt){
+  if(fmt==='json'){
+    const parsed=JSON.parse(text);
+    return Array.isArray(parsed)?parsed:[parsed];
+  } else {
+    return parseCSV(text);
+  }
+}
+
+function parseCSV(text){
+  const lines=text.trim().split('\n');
+  const headers=lines[0].split(',').map(h=>h.trim());
+  return lines.slice(1).map(line=>{
+    const vals=line.split(',');
+    const obj={};
+    headers.forEach((h,i)=>{ obj[h]=(vals[i]||'').trim(); });
+    return obj;
+  });
+}
+
+// ── TYPE INFERENCE ──
+const DATE_RE=/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/;
+
+function inferType(values){
+  const nonNull=values.filter(v=>v!==null&&v!==undefined&&v!=='');
+  if(!nonNull.length) return {type:'null',nullable:true};
+  const nullable=values.some(v=>v===null||v===undefined||v==='');
+
+  if(nonNull.every(v=>typeof v==='boolean'||v==='true'||v==='false'))
+    return {type:'bool',nullable};
+  if(nonNull.every(v=>typeof v==='object'&&Array.isArray(v)))
+    return {type:'array',nullable,items:inferType(nonNull.flat())};
+  if(nonNull.every(v=>typeof v==='object'&&!Array.isArray(v)))
+    return {type:'object',nullable};
+  if(nonNull.every(v=>typeof v==='number'||(typeof v==='string'&&v!==''&&!isNaN(Number(v))))){
+    const isInt=nonNull.every(v=>Number.isInteger(typeof v==='string'?Number(v):v));
+    return {type:isInt?'int':'float',nullable};
+  }
+  if(nonNull.every(v=>typeof v==='string'&&DATE_RE.test(v)))
+    return {type:'datetime',nullable};
+  return {type:'str',nullable};
+}
+
+function analyseFields(rows){
+  if(!rows.length) return [];
+  const allKeys=[...new Set(rows.flatMap(r=>Object.keys(r)))];
+  return allKeys.map(key=>{
+    const values=rows.map(r=>r[key]??null);
+    const info=inferType(values);
+    const samples=values.filter(v=>v!==null&&v!=='').slice(0,3).map(v=>JSON.stringify(v));
+    const uniqueCount=new Set(values.map(v=>JSON.stringify(v))).size;
+    return {key,info,samples,uniqueCount,totalCount:values.length};
+  });
+}
+
+// ── CODE GENERATORS ──
+function pyType(info){
+  const T={str:'str',int:'int',float:'float',bool:'bool',datetime:'datetime',null:'Any',array:'List[Any]',object:'Dict[str,Any]'};
+  const base=T[info.type]||'Any';
+  return info.nullable?`Optional[${base}]`:base;
+}
+
+function genPydantic(fields, cls){
+  const imports=new Set(['from pydantic import BaseModel','from typing import Optional, List, Dict, Any']);
+  const hasDt=fields.some(f=>f.info.type==='datetime');
+  if(hasDt) imports.add('from datetime import datetime');
+
+  const lines=[...imports,'',`class ${cls}(BaseModel):`];
+  fields.forEach(f=>{
+    const t=pyType(f.info);
+    const default_=f.info.nullable?` = None`:(f.info.type==='array'?' = []':'');
+    lines.push(`    ${f.key}: ${t}${default_}`);
+  });
+  lines.push('','    model_config = {"from_attributes": True}');
+  return lines.join('\n');
+}
+
+function sqlType(info){
+  return {str:'String(255)',int:'Integer',float:'Float',bool:'Boolean',
+          datetime:'DateTime',null:'Text',array:'Text',object:'Text'}[info.type]||'Text';
+}
+
+function genSQLAlchemy(fields, cls){
+  const lines=[
+    'from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text',
+    'from sqlalchemy.orm import declarative_base',
+    'from datetime import datetime','',
+    'Base = declarative_base()','',
+    `class ${cls}(Base):`,
+    `    __tablename__ = "${cls.toLowerCase()}s"`,
+    `    id = Column(Integer, primary_key=True, index=True)`,
+  ];
+  fields.filter(f=>f.key!=='id').forEach(f=>{
+    const t=sqlType(f.info);
+    const nullable=f.info.nullable?', nullable=True':'';
+    const idx=f.key.includes('id')||f.key==='name'?', index=True':'';
+    lines.push(`    ${f.key} = Column(${t}${nullable}${idx})`);
+  });
+  lines.push('','    def to_dict(self):');
+  lines.push('        return {c.name: getattr(self, c.name) for c in self.__table__.columns}');
+  return lines.join('\n');
+}
+
+function genPandas(fields, fmt, cls){
+  const dtypes={str:"'string'",int:"'Int64'",float:"'float64'",bool:"'boolean'",datetime:"'object'",null:"'object'",array:"'object'",object:"'object'"};
+  const lines=[];
+  if(fmt==='csv'){
+    lines.push('import pandas as pd','');
+    lines.push(`df = pd.read_csv("your_file.csv")`,'');
+    lines.push('# Cast columns to correct types');
+    fields.forEach(f=>{
+      if(f.info.type==='datetime'){
+        lines.push(`df["${f.key}"] = pd.to_datetime(df["${f.key}"], errors="coerce")`);
+      } else {
+        lines.push(`df["${f.key}"] = df["${f.key}"].astype(${dtypes[f.info.type]||"'object'"})`);
+      }
+    });
+  } else {
+    lines.push('import pandas as pd, json','');
+    lines.push(`with open("your_file.json") as f: data = json.load(f)`);
+    lines.push(`df = pd.json_normalize(data)`,'');
+    lines.push('# Cast columns to correct types');
+    fields.forEach(f=>{
+      if(f.info.type==='datetime'){
+        lines.push(`df["${f.key}"] = pd.to_datetime(df["${f.key}"], errors="coerce")`);
+      } else if(f.info.type==='int'){
+        lines.push(`df["${f.key}"] = pd.to_numeric(df["${f.key}"], errors="coerce").astype("Int64")`);
+      } else if(f.info.type!=='array'&&f.info.type!=='object'){
+        lines.push(`df["${f.key}"] = df["${f.key}"].astype(${dtypes[f.info.type]||"'object'"})`);
+      }
+    });
+  }
+  lines.push('','# Quick look','print(df.dtypes)','print(df.head())');
+  return lines.join('\n');
+}
+
+function tsType(info){
+  const T={str:'string',int:'number',float:'number',bool:'boolean',
+           datetime:'string',null:'null',array:'any[]',object:'Record<string,any>'};
+  const base=T[info.type]||'any';
+  return info.nullable?`${base} | null`:base;
+}
+
+function genTypeScript(fields, cls){
+  const lines=[`interface ${cls} {`];
+  fields.forEach(f=>{
+    const t=tsType(f.info);
+    const opt=f.info.nullable?'?':'';
+    lines.push(`  ${f.key}${opt}: ${t};`);
+  });
+  lines.push('}','',`// Zod schema (optional, install: npm i zod)`,`// import { z } from "zod";`,`// const ${cls}Schema = z.object({`);
+  fields.forEach(f=>{
+    const zt={str:'z.string()',int:'z.number().int()',float:'z.number()',bool:'z.boolean()',datetime:'z.string().datetime()',null:'z.null()',array:'z.array(z.any())',object:'z.record(z.any())'}[f.info.type]||'z.any()';
+    const zfinal=f.info.nullable?`${zt}.nullable().optional()`:zt;
+    lines.push(`//   ${f.key}: ${zfinal},`);
+  });
+  lines.push('// });');
+  return lines.join('\n');
+}
+
+function genJsonSchema(fields, cls){
+  const props={};
+  const required=[];
+  fields.forEach(f=>{
+    const jsType={str:'string',int:'integer',float:'number',bool:'boolean',
+                  datetime:'string',null:'null',array:'array',object:'object'}[f.info.type]||'string';
+    props[f.key]={type:jsType};
+    if(f.info.type==='datetime') props[f.key].format='date-time';
+    if(!f.info.nullable) required.push(f.key);
+  });
+  return JSON.stringify({"$schema":"http://json-schema.org/draft-07/schema#",
+    title:cls,type:'object',required,properties:props,additionalProperties:false},null,2);
+}
+
+// ── RENDER ──
+let currentFields=[], currentRows=[];
+
+function inspect(){
+  const text=document.getElementById('input-area').value.trim();
+  const cls=(document.getElementById('class-name').value||'MyModel').trim();
+  if(!text){ showError('Please paste some data first.'); return; }
+
+  let rows;
+  try{ rows=parseInput(text,currentFormat); }
+  catch(e){ showError(`Parse error: ${e.message}`); return; }
+
+  if(!rows.length){ showError('No data rows found.'); return; }
+
+  currentRows=rows;
+  currentFields=analyseFields(rows);
+
+  const right=document.getElementById('right');
+  right.innerHTML=`
+    <div class="out-tabs">
+      <button class="otab active" onclick="showTab('stats',this)">📊 Stats</button>
+      <button class="otab" onclick="showTab('pydantic',this)">🐍 Pydantic</button>
+      <button class="otab" onclick="showTab('sqlalchemy',this)">🗄️ SQLAlchemy</button>
+      <button class="otab" onclick="showTab('pandas',this)">🐼 pandas</button>
+      <button class="otab" onclick="showTab('typescript',this)">💙 TypeScript</button>
+      <button class="otab" onclick="showTab('jsonschema',this)">📄 JSON Schema</button>
+    </div>
+    <div id="tab-content"></div>`;
+
+  showTab('stats', document.querySelector('.otab'));
+
+  function showTab(tab, btn){
+    document.querySelectorAll('.otab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const el=document.getElementById('tab-content');
+    if(tab==='stats') el.innerHTML=renderStats(rows,currentFields,cls);
+    else if(tab==='pydantic')    renderCode(el,'Pydantic Schema (Python)',genPydantic(currentFields,cls));
+    else if(tab==='sqlalchemy')  renderCode(el,'SQLAlchemy Model (Python)',genSQLAlchemy(currentFields,cls));
+    else if(tab==='pandas')      renderCode(el,'pandas loading code (Python)',genPandas(currentFields,currentFormat,cls));
+    else if(tab==='typescript')  renderCode(el,'TypeScript Interface',genTypeScript(currentFields,cls));
+    else if(tab==='jsonschema')  renderCode(el,'JSON Schema (Draft-07)',genJsonSchema(currentFields,cls));
+  }
+  window.showTab=showTab;
+}
+
+function renderStats(rows, fields, cls){
+  const typeCounts={};
+  fields.forEach(f=>{ typeCounts[f.info.type]=(typeCounts[f.info.type]||0)+1; });
+  const nullableCount=fields.filter(f=>f.info.nullable).length;
+
+  let html=`
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">${rows.length}</div><div class="stat-lbl">rows</div></div>
+      <div class="stat-card"><div class="stat-val">${fields.length}</div><div class="stat-lbl">fields</div></div>
+      <div class="stat-card"><div class="stat-val">${nullableCount}</div><div class="stat-lbl">nullable</div></div>
+      <div class="stat-card"><div class="stat-val">${Object.keys(typeCounts).length}</div><div class="stat-lbl">types found</div></div>
+    </div>
+    <table class="field-table"><thead><tr>
+      <th>Field</th><th>Type</th><th>Nullable</th><th>Unique</th><th>Sample values</th>
+    </tr></thead><tbody>`;
+
+  fields.forEach(f=>{
+    const tp=f.info.type;
+    const pillClass={'str':'tp-str','int':'tp-int','float':'tp-float','bool':'tp-bool',
+                     'null':'tp-null','array':'tp-arr','object':'tp-obj','datetime':'tp-date'}[tp]||'tp-str';
+    const uniqPct=Math.round(f.uniqueCount/f.totalCount*100);
+    html+=`<tr>
+      <td><strong>${esc(f.key)}</strong></td>
+      <td><span class="type-pill ${pillClass}">${tp}</span></td>
+      <td><span class="nullable">${f.info.nullable?'yes':''}</span></td>
+      <td><span style="font-size:11px;color:var(--text3)">${f.uniqueCount} (${uniqPct}%)</span></td>
+      <td><span class="sample-val" title="${esc(f.samples.join(', '))}">${esc(f.samples.join(', '))}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  return html;
+}
+
+function renderCode(el, title, code){
+  const id='c'+Math.random().toString(36).slice(2);
+  el.innerHTML=`<div class="code-block">
+    <div class="code-head">
+      <span class="code-head-title">${esc(title)}</span>
+      <button class="copy-btn" onclick="cpCode(this,'${id}')">Copy</button>
+    </div>
+    <pre class="out-code" id="${id}">${esc(code)}</pre>
+  </div>`;
+}
+
+function cpCode(btn,id){
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1200);
+}
+
+function showError(msg){
+  document.getElementById('right').innerHTML=`<div class="error-box">❌ ${esc(msg)}</div>`;
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

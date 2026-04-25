@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Regex Builder & Tester</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#185FA5;--al:#E6F1FB;--am:#0d3d6e;
+  --match:#FFE082;--match-border:#F59E0B;
+  --group0:#c8e6c9;--group1:#bbdefb;--group2:#e1bee7;--group3:#ffe0b2;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#0a2540;
+  --match:#7c5c00;--match-border:#b8860b;--group0:#1b5e20;--group1:#0d2e54;--group2:#4a1a5c;--group3:#5c3000;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+
+.container{max-width:960px;margin:0 auto;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1rem}
+
+/* PATTERN ROW */
+.pattern-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.pattern-head{padding:9px 13px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;background:var(--bg2)}
+.pattern-body{padding:12px 13px;display:flex;flex-direction:column;gap:10px}
+
+.regex-input-row{display:flex;align-items:center;gap:0;border:1.5px solid var(--border2);border-radius:var(--radius);overflow:hidden;background:var(--bg);transition:border-color .15s}
+.regex-input-row:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--al)}
+.regex-delim{padding:8px 10px;background:var(--bg2);color:var(--text3);font-family:var(--mono);font-size:15px;font-weight:700;user-select:none}
+.regex-main{flex:1;font-family:var(--mono);font-size:14px;padding:8px 6px;border:none;background:transparent;color:var(--text);outline:none}
+.flag-area{padding:6px 8px;background:var(--bg2);display:flex;gap:4px}
+.flag-btn{width:22px;height:22px;border-radius:4px;border:0.5px solid var(--border2);font-size:11px;font-weight:700;cursor:pointer;background:transparent;color:var(--text3);transition:all .15s;font-family:var(--mono)}
+.flag-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.status-row{display:flex;align-items:center;gap:10px;min-height:22px}
+.status-badge{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:600}
+.status-ok{background:var(--group0);color:#1b5e20}
+.status-err{background:#fecaca;color:#b91c1c}
+.status-none{background:var(--bg2);color:var(--text3)}
+.match-count{font-size:12px;color:var(--text2)}
+
+.flags-desc{font-size:11px;color:var(--text3)}
+
+/* CHEATSHEET */
+.cheat-row{display:flex;flex-wrap:wrap;gap:6px}
+.cheat-btn{font-size:11px;padding:3px 9px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;font-family:var(--mono);color:var(--text2);transition:all .15s;white-space:nowrap}
+.cheat-btn:hover{border-color:var(--accent);background:var(--al);color:var(--accent)}
+.cheat-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:600;align-self:center;margin-right:2px}
+
+/* TEST TEXT */
+.test-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.test-head{padding:9px 13px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;background:var(--bg2)}
+.sample-pills{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+.sample-pill{font-size:11px;padding:2px 9px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.sample-pill:hover{border-color:var(--accent);color:var(--accent)}
+.test-highlight{min-height:100px;max-height:220px;overflow-y:auto;padding:12px 13px;font-family:var(--mono);font-size:13px;line-height:1.9;white-space:pre-wrap;word-break:break-all;background:var(--bg2)}
+.test-input{width:100%;min-height:100px;font-family:var(--mono);font-size:13px;padding:12px 13px;border:none;background:transparent;color:var(--text);resize:vertical;outline:none;line-height:1.9}
+mark.m{background:var(--match);border-bottom:2px solid var(--match-border);border-radius:2px;color:var(--text)}
+mark.g0{background:var(--group0);border-radius:2px;color:var(--text)}
+mark.g1{background:var(--group1);border-radius:2px;color:var(--text)}
+mark.g2{background:var(--group2);border-radius:2px;color:var(--text)}
+mark.g3{background:var(--group3);border-radius:2px;color:var(--text)}
+
+/* MATCHES TABLE */
+.matches-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.matches-head{padding:9px 13px;border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;background:var(--bg2);display:flex;align-items:center;gap:8px}
+.match-table{width:100%;border-collapse:collapse;font-size:12px}
+.match-table th{text-align:left;padding:6px 12px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);background:var(--bg2)}
+.match-table td{padding:6px 12px;border-bottom:0.5px solid var(--border);font-family:var(--mono);vertical-align:top}
+.match-table tr:last-child td{border-bottom:none}
+.match-table tr:hover td{background:var(--bg2)}
+.match-val{display:inline-block;background:var(--match);padding:1px 5px;border-radius:3px;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.group-val{display:inline-block;padding:1px 5px;border-radius:3px;color:var(--text);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* CODE OUTPUT */
+.code-tabs{display:flex;gap:5px;margin-bottom:0;padding:9px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.ctab{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s}
+.ctab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.code-out-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.copy-btn{font-size:11px;padding:3px 12px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text3);transition:all .15s;margin-left:auto}
+.copy-btn:hover,.copy-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.code-block{padding:12px 13px;font-size:12px;line-height:1.7;overflow-x:auto;color:var(--text);white-space:pre;font-family:var(--mono);background:var(--bg2)}
+
+.empty-matches{padding:1rem 13px;font-size:13px;color:var(--text3);font-style:italic}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔎 Regex Builder & Tester</h1>
+  <p>Write a regex, test it live, get the Python / JavaScript / Go code — all offline</p>
+  <span class="badge">offline</span>
+</header>
+
+<div class="container">
+
+  <!-- PATTERN -->
+  <div class="pattern-card">
+    <div class="pattern-head">
+      <span>Pattern</span>
+      <span class="flags-desc" id="flag-desc">flags: none</span>
+    </div>
+    <div class="pattern-body">
+      <div class="regex-input-row">
+        <span class="regex-delim">/</span>
+        <input class="regex-main" id="regex-input" type="text" placeholder="your regex here..." oninput="run()" spellcheck="false" autocomplete="off"/>
+        <span class="regex-delim">/</span>
+        <div class="flag-area">
+          <button class="flag-btn" id="flag-g" title="global — find all matches" onclick="toggleFlag('g')">g</button>
+          <button class="flag-btn" id="flag-i" title="case insensitive" onclick="toggleFlag('i')">i</button>
+          <button class="flag-btn" id="flag-m" title="multiline — ^ and $ match line boundaries" onclick="toggleFlag('m')">m</button>
+          <button class="flag-btn" id="flag-s" title="dotAll — dot matches newlines" onclick="toggleFlag('s')">s</button>
+        </div>
+      </div>
+      <div class="status-row">
+        <span class="status-badge status-none" id="status-badge">waiting</span>
+        <span class="match-count" id="match-count"></span>
+        <span class="flags-desc" id="error-msg"></span>
+      </div>
+
+      <!-- Cheatsheet -->
+      <div class="cheat-row">
+        <span class="cheat-label">Insert:</span>
+        <button class="cheat-btn" onclick="ins('\\\\d+')" title="one or more digits">\d+</button>
+        <button class="cheat-btn" onclick="ins('\\\\w+')" title="one or more word chars">\w+</button>
+        <button class="cheat-btn" onclick="ins('\\\\s+')" title="one or more whitespace">\s+</button>
+        <button class="cheat-btn" onclick="ins('[A-Z]')" title="any uppercase letter">[A-Z]</button>
+        <button class="cheat-btn" onclick="ins('[a-z]')" title="any lowercase letter">[a-z]</button>
+        <button class="cheat-btn" onclick="ins('.*')" title="any chars (greedy)">.*</button>
+        <button class="cheat-btn" onclick="ins('.+?')" title="any chars (lazy)">.+?</button>
+        <button class="cheat-btn" onclick="ins('^')" title="start of line">^</button>
+        <button class="cheat-btn" onclick="ins('$')" title="end of line">$</button>
+        <button class="cheat-btn" onclick="ins('\\\\b')" title="word boundary">\b</button>
+        <button class="cheat-btn" onclick="ins('()')" title="capture group">( )</button>
+        <button class="cheat-btn" onclick="ins('(?:)')" title="non-capture group">(?:)</button>
+        <button class="cheat-btn" onclick="ins('(?=)')" title="lookahead">(?=)</button>
+        <button class="cheat-btn" onclick="ins('{1,3}')" title="repeat 1 to 3 times">{n,m}</button>
+        <button class="cheat-btn" onclick="ins('[^]')" title="character NOT in set">[^ ]</button>
+        <button class="cheat-btn" onclick="ins('|')" title="OR">|</button>
+      </div>
+      <div class="cheat-row">
+        <span class="cheat-label">Patterns:</span>
+        <button class="cheat-btn" onclick="setPattern('[\\\\w.+-]+@[\\\\w-]+\\\\.[\\\\w.-]+')" title="Email address">email</button>
+        <button class="cheat-btn" onclick="setPattern('https?:\\/\\/[\\\\w\\\\-._~:/?#[\\\\]@!$&\'()*+,;=%]+')" title="URL">url</button>
+        <button class="cheat-btn" onclick="setPattern('\\\\b\\\\d{1,3}\\\\.\\\\d{1,3}\\\\.\\\\d{1,3}\\\\.\\\\d{1,3}\\\\b')" title="IPv4 address">ip address</button>
+        <button class="cheat-btn" onclick="setPattern('\\\\d{4}-\\\\d{2}-\\\\d{2}')" title="YYYY-MM-DD date">date</button>
+        <button class="cheat-btn" onclick="setPattern('\\\\+?[\\\\d\\\\s\\\\-().]{7,15}')" title="Phone number">phone</button>
+        <button class="cheat-btn" onclick="setPattern('#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\\\\b')" title="Hex colour">#hex color</button>
+        <button class="cheat-btn" onclick="setPattern('\\\\b[A-Z]{2,}\\\\b')" title="All-caps words">ALLCAPS</button>
+        <button class="cheat-btn" onclick="setPattern('^\\\\s*$')" title="Blank lines">blank line</button>
+        <button class="cheat-btn" onclick="setPattern('\\\\b\\\\d+(\\\\.\\\\d+)?\\\\b')" title="Numbers">number</button>
+        <button class="cheat-btn" onclick="setPattern('[^\\\\x00-\\\\x7F]+')" title="Non-ASCII chars">non-ASCII</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEST TEXT -->
+  <div class="test-card">
+    <div class="test-head">
+      Test text
+      <div class="sample-pills">
+        <button class="sample-pill" onclick="setSample('emails')">emails</button>
+        <button class="sample-pill" onclick="setSample('log')">log file</button>
+        <button class="sample-pill" onclick="setSample('html')">HTML</button>
+        <button class="sample-pill" onclick="setSample('data')">mixed data</button>
+      </div>
+    </div>
+    <div id="highlight-layer" class="test-highlight" style="display:none"></div>
+    <textarea class="test-input" id="test-input" placeholder="Type or paste your test text here..." oninput="run()" rows="6"></textarea>
+  </div>
+
+  <!-- MATCHES -->
+  <div class="matches-card" id="matches-card" style="display:none">
+    <div class="matches-head">
+      Matches
+      <span id="matches-summary" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+    </div>
+    <div id="matches-body"></div>
+  </div>
+
+  <!-- CODE OUTPUT -->
+  <div class="code-out-card" id="code-card" style="display:none">
+    <div class="code-tabs">
+      <span style="font-size:12px;font-weight:600;margin-right:6px">Code:</span>
+      <button class="ctab active" onclick="setLang('python',this)">Python</button>
+      <button class="ctab" onclick="setLang('javascript',this)">JavaScript</button>
+      <button class="ctab" onclick="setLang('go',this)">Go</button>
+      <button class="ctab" onclick="setLang('bash',this)">grep</button>
+      <button class="copy-btn" id="code-copy" onclick="copyCode()">Copy</button>
+    </div>
+    <pre class="code-block" id="code-output"></pre>
+  </div>
+
+</div>
+
+<script>
+let flags = {g:true, i:false, m:false, s:false};
+let currentLang = 'python';
+let lastPattern = '';
+let lastText = '';
+let lastMatches = [];
+
+// init flag buttons
+document.getElementById('flag-g').classList.add('on');
+
+const SAMPLES = {
+  emails: `Contact us at hello@example.com or support@company.org
+Billing: billing@example.co.uk
+Invalid: notanemail, @missinglocal.com, missing@.com
+Alice <alice@wonderland.net> and Bob <bob123@test-domain.com>`,
+
+  log: `2024-03-15 10:23:45 INFO  Server started on port 8000
+2024-03-15 10:23:46 DEBUG Loading config from /etc/app/config.json
+2024-03-15 10:24:01 WARN  High memory usage: 87%
+2024-03-15 10:25:12 ERROR Connection failed: timeout after 30s (attempt 1/3)
+2024-03-15 10:25:14 ERROR Connection failed: timeout after 30s (attempt 2/3)
+2024-03-15 10:26:00 INFO  User 42 logged in from 192.168.1.105
+2024-03-15 10:27:30 INFO  Request GET /api/users 200 OK 142ms`,
+
+  html: `<div class="container" id="main">
+  <h1>Hello <strong>World</strong></h1>
+  <a href="https://example.com" target="_blank">Visit site</a>
+  <img src="/images/photo.jpg" alt="A photo" width="400" height="300"/>
+  <p style="color: #ff5733; font-size: 16px;">Styled text</p>
+  <input type="email" name="user_email" placeholder="Enter email"/>
+</div>`,
+
+  data: `Order #1042: Alice Smith, alice@shop.com, $1,299.99, 2024-01-15, SHIPPED
+Order #1043: Bob Jones, bob@mail.org, $49.50, 2024-01-16, PENDING
+Phone: +1 (555) 867-5309 | Alt: 555-123-4567
+IP addresses: 192.168.0.1, 10.0.0.254, 172.16.100.200
+Hex colors: #FF5733, #28B463, #3498db, #fff
+SKU codes: PROD-001, PROD-042, ITEM-9999`
+};
+
+function setSample(key){
+  document.getElementById('test-input').value=SAMPLES[key]||'';
+  run();
+}
+
+function toggleFlag(f){
+  flags[f]=!flags[f];
+  document.getElementById('flag-'+f).classList.toggle('on',flags[f]);
+  updateFlagDesc();
+  run();
+}
+
+function updateFlagDesc(){
+  const active=Object.entries(flags).filter(([,v])=>v).map(([k])=>k);
+  document.getElementById('flag-desc').textContent=active.length?`flags: ${active.join('')}`:'flags: none';
+}
+
+function ins(token){
+  const el=document.getElementById('regex-input');
+  const s=el.selectionStart, e=el.selectionEnd;
+  const val=el.value;
+  el.value=val.slice(0,s)+token+val.slice(e);
+  el.selectionStart=el.selectionEnd=s+token.length;
+  el.focus(); run();
+}
+
+function setPattern(p){
+  document.getElementById('regex-input').value=p;
+  if(!flags.g){flags.g=true;document.getElementById('flag-g').classList.add('on');updateFlagDesc();}
+  run();
+}
+
+function run(){
+  const pattern=document.getElementById('regex-input').value;
+  const text=document.getElementById('test-input').value;
+  lastPattern=pattern; lastText=text;
+
+  if(!pattern){
+    setBadge('waiting','');
+    document.getElementById('highlight-layer').style.display='none';
+    document.getElementById('test-input').style.display='';
+    document.getElementById('matches-card').style.display='none';
+    document.getElementById('code-card').style.display='none';
+    return;
+  }
+
+  let re;
+  try{
+    const flagStr=Object.entries(flags).filter(([,v])=>v).map(([k])=>k).join('');
+    re=new RegExp(pattern,flagStr);
+    document.getElementById('error-msg').textContent='';
+  } catch(e){
+    setBadge('error','');
+    document.getElementById('error-msg').textContent=e.message;
+    document.getElementById('matches-card').style.display='none';
+    document.getElementById('highlight-layer').style.display='none';
+    document.getElementById('test-input').style.display='';
+    return;
+  }
+
+  const matches=[];
+  if(flags.g){
+    let m;
+    const re2=new RegExp(pattern,Object.entries(flags).filter(([,v])=>v).map(([k])=>k).join(''));
+    while((m=re2.exec(text))!==null){
+      matches.push({match:m[0],index:m.index,groups:Array.from(m).slice(1)});
+      if(!flags.g) break;
+    }
+  } else {
+    const m=re.exec(text);
+    if(m) matches.push({match:m[0],index:m.index,groups:Array.from(m).slice(1)});
+  }
+
+  lastMatches=matches;
+
+  if(matches.length){
+    setBadge('ok','');
+    document.getElementById('match-count').textContent=`${matches.length} match${matches.length!==1?'es':''}`;
+  } else {
+    setBadge('none','no matches');
+    document.getElementById('match-count').textContent='';
+  }
+
+  renderHighlight(text, matches);
+  renderMatches(matches);
+  renderCode();
+}
+
+function setBadge(type, msg){
+  const b=document.getElementById('status-badge');
+  b.className='status-badge';
+  if(type==='ok'){ b.classList.add('status-ok'); b.textContent='✓ valid'; }
+  else if(type==='error'){ b.classList.add('status-err'); b.textContent='✗ error'; }
+  else { b.classList.add('status-none'); b.textContent=msg||'waiting'; }
+}
+
+function renderHighlight(text, matches){
+  if(!matches.length){
+    document.getElementById('highlight-layer').style.display='none';
+    document.getElementById('test-input').style.display='';
+    return;
+  }
+  let html=''; let last=0;
+  const groupColors=['g0','g1','g2','g3'];
+  matches.forEach(m=>{
+    html+=esc(text.slice(last,m.index));
+    if(m.groups.length){
+      // Highlight full match, then groups inside
+      html+=`<mark class="m">${esc(m.match)}</mark>`;
+    } else {
+      html+=`<mark class="m">${esc(m.match)}</mark>`;
+    }
+    last=m.index+m.match.length;
+  });
+  html+=esc(text.slice(last));
+  document.getElementById('highlight-layer').innerHTML=html;
+  document.getElementById('highlight-layer').style.display='';
+  document.getElementById('test-input').style.display='none';
+}
+
+function renderMatches(matches){
+  const card=document.getElementById('matches-card');
+  if(!matches.length){ card.style.display='none'; return; }
+  card.style.display='';
+
+  const hasGroups=matches.some(m=>m.groups.length>0);
+  document.getElementById('matches-summary').textContent=
+    `${matches.length} match${matches.length!==1?'es':''}${hasGroups?` · ${matches[0].groups.length} group(s)`:''}`;
+
+  let html=`<table class="match-table"><thead><tr>
+    <th>#</th><th>Match</th><th>Index</th>`;
+  if(hasGroups){
+    matches[0].groups.forEach((_,i)=>{ html+=`<th>Group ${i+1}</th>`; });
+  }
+  html+='</tr></thead><tbody>';
+
+  matches.slice(0,50).forEach((m,i)=>{
+    html+=`<tr><td style="color:var(--text3)">${i+1}</td>
+      <td><span class="match-val" title="${esc(m.match)}">${esc(m.match)}</span></td>
+      <td style="color:var(--text3)">${m.index}–${m.index+m.match.length}</td>`;
+    if(hasGroups){
+      m.groups.forEach((g,gi)=>{
+        const cls=['g0','g1','g2','g3'][gi]||'g0';
+        html+=`<td><span class="group-val ${cls}" title="${esc(String(g))}">${g===undefined?'<em>no match</em>':esc(String(g))}</span></td>`;
+      });
+    }
+    html+='</tr>';
+  });
+  if(matches.length>50) html+=`<tr><td colspan="10" style="padding:6px 12px;color:var(--text3);font-style:italic">... and ${matches.length-50} more matches</td></tr>`;
+  html+='</tbody></table>';
+  document.getElementById('matches-body').innerHTML=html;
+}
+
+function renderCode(){
+  document.getElementById('code-card').style.display='';
+  updateCode();
+}
+
+function setLang(lang, btn){
+  currentLang=lang;
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  updateCode();
+}
+
+function updateCode(){
+  const p=lastPattern;
+  const flagStr=Object.entries(flags).filter(([,v])=>v).map(([k])=>k).join('');
+  const text=lastText.slice(0,100).replace(/\n/g,'\\n').replace(/"/g,'\\"');
+  const escaped=p.replace(/\\/g,'\\\\');
+  const escapedDouble=p.replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+
+  let code='';
+  if(currentLang==='python'){
+    const pyFlags=[];
+    if(flags.i) pyFlags.push('re.IGNORECASE');
+    if(flags.m) pyFlags.push('re.MULTILINE');
+    if(flags.s) pyFlags.push('re.DOTALL');
+    const flagsStr=pyFlags.length?`, ${pyFlags.join(' | ')}`:'';
+    const pattern=`r"${escaped}"`;
+    code=`import re
+
+text = """${text}..."""
+
+pattern = re.compile(${pattern}${flagsStr})
+
+# Find all matches
+matches = pattern.findall(text)
+print(f"Found {len(matches)} matches:", matches)
+
+# Find all with position info
+for m in pattern.finditer(text):
+    print(f"Match: {m.group()!r} at {m.start()}–{m.end()}")${lastMatches.length&&lastMatches[0].groups.length?`
+    print("Groups:", m.groups())`:''}
+
+# Check if text matches (True/False)
+is_match = bool(pattern.search(text))
+
+# Replace all matches
+result = pattern.sub("REPLACEMENT", text)
+
+# Split on pattern
+parts = pattern.split(text)`;
+  } else if(currentLang==='javascript'){
+    const jsFlags=flagStr||'';
+    code=`const text = "${text}...";
+
+const pattern = /${escaped}/${jsFlags};
+
+// Find all matches (returns array or null)
+const matches = text.match(pattern);
+console.log("Matches:", matches);
+
+// Iterate with position info
+for (const m of text.matchAll(/${escaped}/g${flags.i?'i':''}${flags.m?'m':''}${flags.s?'s':''})) {
+  console.log(\`Match: "\${m[0]}" at index \${m.index}\`);${lastMatches.length&&lastMatches[0].groups.length?`
+  console.log("Groups:", m.slice(1));`:''}
+}
+
+// Test if matches (true/false)
+const isMatch = pattern.test(text);
+
+// Replace
+const result = text.replace(pattern, "REPLACEMENT");
+
+// Split
+const parts = text.split(pattern);`;
+  } else if(currentLang==='go'){
+    code=`package main
+
+import (
+\t"fmt"
+\t"regexp"
+)
+
+func main() {
+\ttext := "${text}..."
+
+\t// Compile the pattern
+\tpattern := regexp.MustCompile(\`(?${flagStr||''}:${escaped})\`)
+
+\t// Find all matches
+\tmatches := pattern.FindAllString(text, -1)
+\tfmt.Printf("Found %d matches: %v\\n", len(matches), matches)
+
+\t// Find with submatches (capture groups)
+\tsubmatches := pattern.FindAllStringSubmatch(text, -1)
+\tfor _, m := range submatches {
+\t\tfmt.Printf("Match: %q, Groups: %v\\n", m[0], m[1:])
+\t}
+
+\t// Test if matches
+\tisMatch := pattern.MatchString(text)
+\tfmt.Println("Matches:", isMatch)
+
+\t// Replace
+\tresult := pattern.ReplaceAllString(text, "REPLACEMENT")
+\tfmt.Println("Result:", result)
+}`;
+  } else if(currentLang==='bash'){
+    const grepFlags=['-E'];
+    if(flags.i) grepFlags.push('-i');
+    if(flags.m||true) grepFlags.push('-n');
+    code=`# grep — Extended regex (ERE) — note: syntax differs slightly from JS/Python
+
+# Find lines matching pattern
+grep ${grepFlags.join(' ')} '${p}' yourfile.txt
+
+# Count matches
+grep -c '${p}' yourfile.txt
+
+# Show only the matched part (not whole line)
+grep -oE '${p}' yourfile.txt
+
+# Invert match (lines NOT matching)
+grep -v '${p}' yourfile.txt
+
+# Match in multiple files recursively
+grep -rE '${p}' ./your/directory/
+
+# sed: replace matches
+sed -E 's/${p}/REPLACEMENT/g' yourfile.txt
+
+# awk: print lines matching
+awk '/${p}/' yourfile.txt`;
+  }
+  document.getElementById('code-output').textContent=code;
+}
+
+function copyCode(){
+  navigator.clipboard.writeText(document.getElementById('code-output').textContent);
+  const btn=document.getElementById('code-copy');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1300);
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Start with a sample
+setSample('data');
+setPattern('[\\w.+-]+@[\\w-]+\\.[\\w.-]+');
+</script>
+</body>
+</html>

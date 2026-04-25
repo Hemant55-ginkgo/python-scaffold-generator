@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SQL Query Builder</title>
+<style>
+:root{
+  --bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;
+  --text:#1a1a1a;--text2:#555;--text3:#999;
+  --border:rgba(0,0,0,0.11);--border2:rgba(0,0,0,0.2);
+  --accent:#534AB7;--al:#EEEDFE;--am:#3930a0;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'Courier New',monospace;--radius:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--al:#2e2a5c;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:.85rem 1.75rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600}
+header p{font-size:12px;color:var(--text2);flex:1}
+.badge{font-size:10px;background:var(--al);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600;border:0.5px solid var(--accent)}
+.dialect-tabs{display:flex;gap:5px}
+.dtab{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.dtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.layout{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 52px)}
+
+/* LEFT */
+.left{background:var(--bg);border-right:0.5px solid var(--border);padding:1.1rem;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
+.section-card{border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.sc-head{padding:8px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.sc-body{padding:10px 12px}
+.fl{font-size:11px;color:var(--text2);margin-bottom:3px;display:block;margin-top:8px;font-weight:500}
+.fl:first-child{margin-top:0}
+.fi{width:100%;font-size:12px;padding:5px 8px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--sans);outline:none}
+.fi:focus{border-color:var(--accent);background:var(--bg)}
+select.fi{cursor:pointer}
+
+/* Table editor */
+.table-def{margin-bottom:10px}
+.table-head-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.table-name-input{flex:1;font-size:13px;font-weight:600;padding:5px 8px;border-radius:var(--radius);border:0.5px solid var(--accent);background:var(--al);color:var(--text);font-family:var(--mono);outline:none}
+.del-tbl{width:24px;height:24px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-size:13px;display:flex;align-items:center;justify-content:center}
+.del-tbl:hover{background:#fecaca;color:#b91c1c;border-color:#f87171}
+.col-row{display:grid;grid-template-columns:1fr 80px 24px;gap:4px;margin-bottom:3px;align-items:center}
+.col-row .fi{font-size:11px;padding:4px 6px;font-family:var(--mono)}
+.col-type{font-size:10px;padding:4px 4px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);font-family:var(--sans);cursor:pointer}
+.del-col{width:24px;height:24px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-size:12px;display:flex;align-items:center;justify-content:center}
+.del-col:hover{color:#b91c1c;background:#fecaca;border-color:#f87171}
+.add-btn{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--accent);background:var(--al);color:var(--accent);cursor:pointer;font-family:var(--sans);transition:all .15s;white-space:nowrap}
+.add-btn:hover{background:var(--accent);color:#fff}
+
+/* RIGHT */
+.right{padding:1.25rem 1.5rem;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
+
+/* Query builder */
+.qb-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.qb-section{padding:12px 14px;border-bottom:0.5px solid var(--border)}
+.qb-section:last-child{border-bottom:none}
+.qb-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.keyword{font-family:var(--mono);font-weight:700;font-size:12px;color:var(--accent);background:var(--al);padding:1px 6px;border-radius:4px}
+
+.col-checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:5px}
+.col-check{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--bg2);cursor:pointer;transition:all .15s}
+.col-check:hover{border-color:var(--accent);background:var(--al)}
+.col-check input{accent-color:var(--accent)}
+.col-check-label{font-size:12px;font-family:var(--mono)}
+
+.join-row{display:grid;grid-template-columns:100px 1fr 28px;gap:6px;align-items:center;margin-bottom:6px}
+.where-row{display:grid;grid-template-columns:1fr 70px 1fr 28px;gap:6px;align-items:center;margin-bottom:6px}
+.order-row{display:grid;grid-template-columns:1fr 80px 28px;gap:6px;align-items:center;margin-bottom:6px}
+
+.del-row-btn{width:28px;height:28px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-size:14px;display:flex;align-items:center;justify-content:center}
+.del-row-btn:hover{background:#fecaca;color:#b91c1c;border-color:#f87171}
+
+/* Output */
+.output-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.out-head{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.out-head h3{font-size:13px;font-weight:600;flex:1}
+.copy-btn{font-size:12px;padding:4px 14px;border-radius:20px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--text2);transition:all .15s}
+.copy-btn:hover,.copy-btn.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+pre.sql-out{padding:14px;font-size:13px;line-height:1.8;overflow-x:auto;color:var(--text);white-space:pre;font-family:var(--mono);background:var(--bg2)}
+.kw{color:#7C3AED;font-weight:700}
+.tbl{color:#185FA5}
+.col{color:#0F6E56}
+.val{color:#993556}
+.cmt{color:var(--text3);font-style:italic}
+
+/* Also gen Python/ORM */
+.also-tabs{display:flex;gap:5px;padding:9px 13px;border-bottom:0.5px solid var(--border);background:var(--bg2)}
+.atab{font-size:11px;padding:3px 10px;border-radius:10px;border:0.5px solid var(--border2);background:transparent;cursor:pointer;color:var(--text3);font-family:var(--sans);transition:all .15s}
+.atab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.placeholder{padding:2rem;text-align:center;color:var(--text3);font-size:13px;line-height:1.8}
+</style>
+</head>
+<body>
+<header>
+  <h1>🗃️ SQL Query Builder</h1>
+  <p>Define tables, build queries visually, get SQL + Python SQLAlchemy code</p>
+  <span class="badge">offline</span>
+  <div class="dialect-tabs">
+    <button class="dtab active" onclick="setDialect('postgresql',this)">PostgreSQL</button>
+    <button class="dtab" onclick="setDialect('mysql',this)">MySQL</button>
+    <button class="dtab" onclick="setDialect('sqlite',this)">SQLite</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT: tables -->
+  <div class="left">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;font-weight:600">Tables</span>
+      <button class="add-btn" onclick="addTable()">+ Add table</button>
+    </div>
+    <div id="tables-area"></div>
+
+    <!-- Limit / Offset -->
+    <div class="section-card">
+      <div class="sc-head">Query options</div>
+      <div class="sc-body">
+        <span class="fl">LIMIT</span>
+        <input class="fi" id="limit-val" type="number" placeholder="e.g. 100" oninput="buildQuery()"/>
+        <span class="fl">OFFSET</span>
+        <input class="fi" id="offset-val" type="number" placeholder="e.g. 0" oninput="buildQuery()"/>
+        <span class="fl">Query type</span>
+        <select class="fi" id="query-type" onchange="buildQuery()">
+          <option value="select">SELECT</option>
+          <option value="count">SELECT COUNT(*)</option>
+          <option value="insert">INSERT INTO</option>
+          <option value="update">UPDATE</option>
+          <option value="delete">DELETE</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: query builder + output -->
+  <div class="right">
+    <div class="qb-card">
+      <!-- FROM -->
+      <div class="qb-section">
+        <div class="qb-label"><span class="keyword">FROM</span> — which table?</div>
+        <select class="fi" id="from-table" onchange="onFromChange()" style="max-width:240px">
+          <option value="">— pick a table —</option>
+        </select>
+      </div>
+
+      <!-- SELECT columns -->
+      <div class="qb-section" id="select-section">
+        <div class="qb-label"><span class="keyword">SELECT</span> — which columns?</div>
+        <div class="col-checkbox-grid" id="col-checkboxes">
+          <span style="font-size:12px;color:var(--text3)">Pick a table first</span>
+        </div>
+      </div>
+
+      <!-- JOINs -->
+      <div class="qb-section">
+        <div class="qb-label"><span class="keyword">JOIN</span> — connect another table</div>
+        <div id="joins-list"></div>
+        <button class="add-btn" onclick="addJoin()">+ Add JOIN</button>
+      </div>
+
+      <!-- WHERE -->
+      <div class="qb-section">
+        <div class="qb-label"><span class="keyword">WHERE</span> — filter rows</div>
+        <div id="wheres-list"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+          <button class="add-btn" onclick="addWhere()">+ Add condition</button>
+          <select class="fi" id="where-logic" onchange="buildQuery()" style="width:80px;font-size:11px">
+            <option value="AND">AND</option>
+            <option value="OR">OR</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ORDER BY -->
+      <div class="qb-section">
+        <div class="qb-label"><span class="keyword">ORDER BY</span></div>
+        <div id="orders-list"></div>
+        <button class="add-btn" onclick="addOrder()">+ Add sort</button>
+      </div>
+
+      <!-- GROUP BY -->
+      <div class="qb-section">
+        <div class="qb-label"><span class="keyword">GROUP BY</span></div>
+        <div class="col-checkbox-grid" id="group-checkboxes"></div>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="output-card">
+      <div class="also-tabs">
+        <span style="font-size:12px;font-weight:600;margin-right:6px;color:var(--text2)">Output:</span>
+        <button class="atab active" onclick="setOutLang('sql',this)">SQL</button>
+        <button class="atab" onclick="setOutLang('python',this)">Python (raw)</button>
+        <button class="atab" onclick="setOutLang('sqlalchemy',this)">SQLAlchemy ORM</button>
+        <button class="atab" onclick="setOutLang('pandas',this)">pandas</button>
+      </div>
+      <div class="out-head">
+        <h3 id="out-title">Generated SQL</h3>
+        <button class="copy-btn" id="copy-btn" onclick="copySQL()">Copy</button>
+      </div>
+      <pre class="sql-out" id="sql-output"><span style="color:var(--text3)">Build a query above</span></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+let dialect = 'postgresql';
+let tables = [];
+let tableCounter = 0, colCounter = 0, joinCounter = 0, whereCounter = 0, orderCounter = 0;
+let joins = [], wheres = [], orders = [];
+let outLang = 'sql';
+
+const COL_TYPES = {
+  postgresql:['INTEGER','BIGINT','TEXT','VARCHAR(255)','BOOLEAN','DECIMAL(10,2)','TIMESTAMP','DATE','UUID','JSONB','SERIAL'],
+  mysql:     ['INT','BIGINT','TEXT','VARCHAR(255)','TINYINT(1)','DECIMAL(10,2)','DATETIME','DATE','CHAR(36)','JSON','AUTO_INCREMENT'],
+  sqlite:    ['INTEGER','TEXT','REAL','BLOB','NUMERIC'],
+};
+
+function setDialect(d, btn){
+  dialect=d;
+  document.querySelectorAll('.dtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildQuery();
+}
+
+function addTable(){
+  const id='t'+(++tableCounter);
+  tables.push({id, name:'table'+tableCounter, cols:[
+    {id:'c'+(++colCounter), name:'id', type:'INTEGER', pk:true},
+    {id:'c'+(++colCounter), name:'name', type:'TEXT', pk:false},
+  ]});
+  renderTables(); updateFromSelect(); buildQuery();
+}
+
+function removeTable(id){
+  tables=tables.filter(t=>t.id!==id);
+  renderTables(); updateFromSelect(); buildQuery();
+}
+
+function addCol(tableId){
+  const t=tables.find(t=>t.id===tableId);
+  if(t){ t.cols.push({id:'c'+(++colCounter),name:'column'+t.cols.length,type:'TEXT',pk:false}); renderTables(); buildQuery(); }
+}
+
+function removeCol(tableId, colId){
+  const t=tables.find(t=>t.id===tableId);
+  if(t){ t.cols=t.cols.filter(c=>c.id!==colId); renderTables(); buildQuery(); }
+}
+
+function updateTableName(id, val){
+  const t=tables.find(t=>t.id===id);
+  if(t){ t.name=val.trim()||t.name; updateFromSelect(); buildQuery(); }
+}
+
+function updateColName(tableId, colId, val){
+  const t=tables.find(t=>t.id===tableId);
+  const c=t?.cols.find(c=>c.id===colId);
+  if(c){ c.name=val.trim()||c.name; buildQuery(); }
+}
+
+function updateColType(tableId, colId, val){
+  const t=tables.find(t=>t.id===tableId);
+  const c=t?.cols.find(c=>c.id===colId);
+  if(c){ c.type=val; buildQuery(); }
+}
+
+function renderTables(){
+  const types=COL_TYPES[dialect]||COL_TYPES.postgresql;
+  document.getElementById('tables-area').innerHTML=tables.map(t=>`
+    <div class="table-def">
+      <div class="table-head-row">
+        <input class="table-name-input" value="${t.name}" onchange="updateTableName('${t.id}',this.value)" oninput="updateTableName('${t.id}',this.value)"/>
+        <button class="add-btn" onclick="addCol('${t.id}')">+ col</button>
+        <button class="del-tbl" onclick="removeTable('${t.id}')">×</button>
+      </div>
+      ${t.cols.map(c=>`
+        <div class="col-row">
+          <input class="fi" value="${c.name}" style="font-family:var(--mono);font-size:11px" onchange="updateColName('${t.id}','${c.id}',this.value)" oninput="updateColName('${t.id}','${c.id}',this.value)"/>
+          <select class="col-type" onchange="updateColType('${t.id}','${c.id}',this.value)">
+            ${types.map(tp=>`<option ${c.type===tp?'selected':''}>${tp}</option>`).join('')}
+          </select>
+          <button class="del-col" onclick="removeCol('${t.id}','${c.id}')">×</button>
+        </div>`).join('')}
+    </div>`).join('');
+  updateColCheckboxes();
+  updateGroupCheckboxes();
+}
+
+function updateFromSelect(){
+  const sel=document.getElementById('from-table');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— pick a table —</option>'+tables.map(t=>`<option value="${t.id}" ${cur===t.id?'selected':''}>${t.name}</option>`).join('');
+  updateColCheckboxes();
+}
+
+function onFromChange(){
+  updateColCheckboxes();
+  updateGroupCheckboxes();
+  buildQuery();
+}
+
+function allAvailableCols(){
+  const fromId=document.getElementById('from-table').value;
+  const fromTable=tables.find(t=>t.id===fromId);
+  const cols=[];
+  if(fromTable) fromTable.cols.forEach(c=>cols.push({table:fromTable.name,col:c.name,full:`${fromTable.name}.${c.name}`}));
+  joins.forEach(j=>{
+    const jt=tables.find(t=>t.id===j.tableId);
+    if(jt) jt.cols.forEach(c=>cols.push({table:jt.name,col:c.name,full:`${jt.name}.${c.name}`}));
+  });
+  return cols;
+}
+
+function updateColCheckboxes(){
+  const cols=allAvailableCols();
+  const existing=new Set([...document.querySelectorAll('#col-checkboxes input:checked')].map(i=>i.value));
+  document.getElementById('col-checkboxes').innerHTML=cols.length
+    ?cols.map(c=>`<label class="col-check"><input type="checkbox" value="${c.full}" ${existing.has(c.full)||!existing.size?'checked':''} onchange="buildQuery()"/><span class="col-check-label">${c.full}</span></label>`).join('')
+    :'<span style="font-size:12px;color:var(--text3)">Pick a table first</span>';
+}
+
+function updateGroupCheckboxes(){
+  const cols=allAvailableCols();
+  document.getElementById('group-checkboxes').innerHTML=cols.map(c=>`
+    <label class="col-check"><input type="checkbox" value="${c.full}" onchange="buildQuery()"/><span class="col-check-label">${c.full}</span></label>`).join('');
+}
+
+function getChecked(containerId){
+  return [...document.querySelectorAll(`#${containerId} input:checked`)].map(i=>i.value);
+}
+
+// JOINs
+function addJoin(){
+  const id='j'+(++joinCounter);
+  joins.push({id,type:'INNER JOIN',tableId:'',on:''});
+  renderJoins(); buildQuery();
+}
+
+function removeJoin(id){
+  joins=joins.filter(j=>j.id!==id);
+  renderJoins(); updateColCheckboxes(); updateGroupCheckboxes(); buildQuery();
+}
+
+function renderJoins(){
+  document.getElementById('joins-list').innerHTML=joins.map(j=>`
+    <div class="join-row">
+      <select class="fi" onchange="updateJoin('${j.id}','type',this.value)" style="font-size:11px">
+        ${['INNER JOIN','LEFT JOIN','RIGHT JOIN','FULL JOIN'].map(t=>`<option ${j.type===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <select class="fi" onchange="updateJoin('${j.id}','tableId',this.value)" style="font-size:11px">
+          <option value="">— table —</option>
+          ${tables.map(t=>`<option value="${t.id}" ${j.tableId===t.id?'selected':''}>${t.name}</option>`).join('')}
+        </select>
+        <input class="fi" value="${j.on}" placeholder="ON users.id = orders.user_id" style="font-size:11px;font-family:var(--mono)" oninput="updateJoin('${j.id}','on',this.value)"/>
+      </div>
+      <button class="del-row-btn" onclick="removeJoin('${j.id}')">×</button>
+    </div>`).join('');
+}
+
+function updateJoin(id, field, val){
+  const j=joins.find(j=>j.id===id);
+  if(j){ j[field]=val; if(field==='tableId'){ updateColCheckboxes(); updateGroupCheckboxes(); } buildQuery(); }
+}
+
+// WHERE
+function addWhere(){
+  const id='w'+(++whereCounter);
+  wheres.push({id,col:'',op:'=',val:''});
+  renderWheres(); buildQuery();
+}
+
+function removeWhere(id){
+  wheres=wheres.filter(w=>w.id!==id);
+  renderWheres(); buildQuery();
+}
+
+function renderWheres(){
+  const cols=allAvailableCols();
+  document.getElementById('wheres-list').innerHTML=wheres.map(w=>`
+    <div class="where-row">
+      <select class="fi" onchange="updateWhere('${w.id}','col',this.value)" style="font-size:11px;font-family:var(--mono)">
+        <option value="">— column —</option>
+        ${cols.map(c=>`<option value="${c.full}" ${w.col===c.full?'selected':''}>${c.full}</option>`).join('')}
+      </select>
+      <select class="fi" onchange="updateWhere('${w.id}','op',this.value)" style="font-size:11px">
+        ${['=','!=','>','>=','<','<=','LIKE','NOT LIKE','IN','IS NULL','IS NOT NULL'].map(o=>`<option ${w.op===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+      <input class="fi" value="${w.val}" placeholder="value" style="font-size:11px;font-family:var(--mono)" oninput="updateWhere('${w.id}','val',this.value)"/>
+      <button class="del-row-btn" onclick="removeWhere('${w.id}')">×</button>
+    </div>`).join('');
+}
+
+function updateWhere(id, field, val){
+  const w=wheres.find(w=>w.id===id);
+  if(w){ w[field]=val; buildQuery(); }
+}
+
+// ORDER BY
+function addOrder(){
+  const id='o'+(++orderCounter);
+  orders.push({id,col:'',dir:'ASC'});
+  renderOrders(); buildQuery();
+}
+
+function removeOrder(id){
+  orders=orders.filter(o=>o.id!==id);
+  renderOrders(); buildQuery();
+}
+
+function renderOrders(){
+  const cols=allAvailableCols();
+  document.getElementById('orders-list').innerHTML=orders.map(o=>`
+    <div class="order-row">
+      <select class="fi" onchange="updateOrder('${o.id}','col',this.value)" style="font-size:11px;font-family:var(--mono)">
+        <option value="">— column —</option>
+        ${cols.map(c=>`<option value="${c.full}" ${o.col===c.full?'selected':''}>${c.full}</option>`).join('')}
+      </select>
+      <select class="fi" onchange="updateOrder('${o.id}','dir',this.value)" style="font-size:11px">
+        <option ${o.dir==='ASC'?'selected':''}>ASC</option>
+        <option ${o.dir==='DESC'?'selected':''}>DESC</option>
+      </select>
+      <button class="del-row-btn" onclick="removeOrder('${o.id}')">×</button>
+    </div>`).join('');
+}
+
+function updateOrder(id, field, val){
+  const o=orders.find(o=>o.id===id);
+  if(o){ o[field]=val; buildQuery(); }
+}
+
+// ── BUILD QUERY ──
+function buildQuery(){
+  const fromId=document.getElementById('from-table').value;
+  const fromTable=tables.find(t=>t.id===fromId);
+  const qtype=document.getElementById('query-type').value;
+  const limit=document.getElementById('limit-val').value;
+  const offset=document.getElementById('offset-val').value;
+
+  let sql='';
+  if(!fromTable){ document.getElementById('sql-output').textContent='-- Pick a table to start'; return; }
+
+  const selectedCols=getChecked('col-checkboxes');
+  const groupCols=getChecked('group-checkboxes');
+  const logic=document.getElementById('where-logic').value;
+
+  if(qtype==='select'||qtype==='count'){
+    const colList=qtype==='count'?'COUNT(*)':selectedCols.length?selectedCols.join(',\n       '):'*';
+    sql=`SELECT ${colList}\nFROM   ${fromTable.name}`;
+    joins.forEach(j=>{
+      const jt=tables.find(t=>t.id===j.tableId);
+      if(jt&&j.on) sql+=`\n${j.type} ${jt.name} ON ${j.on}`;
+    });
+    const validWheres=wheres.filter(w=>w.col&&(w.op.includes('NULL')||w.val));
+    if(validWheres.length){
+      sql+=`\nWHERE  `+validWheres.map(w=>{
+        if(w.op==='IS NULL'||w.op==='IS NOT NULL') return `${w.col} ${w.op}`;
+        if(w.op==='IN') return `${w.col} IN (${w.val})`;
+        const q=isNaN(Number(w.val))&&!w.val.startsWith("'")?`'${w.val}'`:w.val;
+        return `${w.col} ${w.op} ${q}`;
+      }).join(`\n       ${logic} `);
+    }
+    if(groupCols.length) sql+=`\nGROUP  BY ${groupCols.join(', ')}`;
+    const validOrders=orders.filter(o=>o.col);
+    if(validOrders.length) sql+=`\nORDER  BY `+validOrders.map(o=>`${o.col} ${o.dir}`).join(', ');
+    if(limit) sql+=`\nLIMIT  ${limit}`;
+    if(offset) sql+=`\nOFFSET ${offset}`;
+    sql+=';';
+
+  } else if(qtype==='insert'){
+    const cols=fromTable.cols.filter(c=>!c.pk).map(c=>c.name);
+    sql=`INSERT INTO ${fromTable.name}\n  (${cols.join(', ')})\nVALUES\n  (${cols.map(c=>`-- ${c}`).join(', ')});`;
+
+  } else if(qtype==='update'){
+    const setCols=fromTable.cols.filter(c=>!c.pk);
+    sql=`UPDATE ${fromTable.name}\nSET    `+setCols.map(c=>`${c.name} = -- new value`).join(',\n       ');
+    const validWheres=wheres.filter(w=>w.col&&(w.op.includes('NULL')||w.val));
+    if(validWheres.length){
+      sql+=`\nWHERE  `+validWheres.map(w=>{
+        if(w.op.includes('NULL')) return `${w.col} ${w.op}`;
+        const q=isNaN(Number(w.val))&&!w.val.startsWith("'")?`'${w.val}'`:w.val;
+        return `${w.col} ${w.op} ${q}`;
+      }).join(`\n       ${logic} `);
+    }
+    sql+=';';
+
+  } else if(qtype==='delete'){
+    sql=`DELETE FROM ${fromTable.name}`;
+    const validWheres=wheres.filter(w=>w.col&&(w.op.includes('NULL')||w.val));
+    if(validWheres.length){
+      sql+=`\nWHERE  `+validWheres.map(w=>{
+        if(w.op.includes('NULL')) return `${w.col} ${w.op}`;
+        const q=isNaN(Number(w.val))&&!w.val.startsWith("'")?`'${w.val}'`:w.val;
+        return `${w.col} ${w.op} ${q}`;
+      }).join(`\n       ${logic} `);
+    } else {
+      sql+=`\n-- ⚠️  No WHERE clause — this will delete ALL rows!`;
+    }
+    sql+=';';
+  }
+
+  displayOutput(sql, fromTable, selectedCols);
+}
+
+function displayOutput(sql, fromTable, selectedCols){
+  const el=document.getElementById('sql-output');
+  if(outLang==='sql'){
+    el.textContent=sql;
+  } else if(outLang==='python'){
+    el.textContent=`import psycopg2  # or mysql-connector-python / sqlite3
+
+conn = psycopg2.connect(
+    host="localhost", port=5432,
+    dbname="mydb", user="user", password="password"
+)
+cur = conn.cursor()
+
+query = """
+${sql}
+"""
+
+cur.execute(query)
+rows = cur.fetchall()
+# Access columns: rows[0][0], rows[0][1], ...
+
+for row in rows:
+    print(row)
+
+cur.close()
+conn.close()`;
+  } else if(outLang==='sqlalchemy'){
+    const cols=fromTable.cols;
+    el.textContent=`from sqlalchemy import create_engine, select, Column, Integer, Text, Boolean
+from sqlalchemy.orm import Session, declarative_base
+
+engine = create_engine("postgresql://user:password@localhost/mydb")
+Base = declarative_base()
+
+class ${cap(fromTable.name)}(Base):
+    __tablename__ = "${fromTable.name}"
+${cols.map(c=>`    ${c.name} = Column(${c.type.split('(')[0]}, ${c.pk?'primary_key=True':'nullable=True'})`).join('\n')}
+
+# Run the equivalent query
+with Session(engine) as session:
+    stmt = (
+        select(${cap(fromTable.name)})
+        ${wheres.filter(w=>w.col&&w.val).map(w=>`    .where(${cap(fromTable.name)}.${w.col.split('.').pop()} ${w.op} ${isNaN(Number(w.val))&&!w.val.startsWith("'")?`"${w.val}"`:w.val})`).join('\n        ')}
+    )
+    results = session.scalars(stmt).all()
+    for r in results:
+        print(r)`;
+  } else if(outLang==='pandas'){
+    el.textContent=`import pandas as pd
+from sqlalchemy import create_engine
+
+engine = create_engine("postgresql://user:password@localhost/mydb")
+
+query = """
+${sql}
+"""
+
+df = pd.read_sql(query, engine)
+print(df.head())
+print(df.dtypes)`;
+  }
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function setOutLang(lang, btn){
+  outLang=lang;
+  document.querySelectorAll('.atab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildQuery();
+}
+
+function copySQL(){
+  navigator.clipboard.writeText(document.getElementById('sql-output').textContent);
+  const btn=document.getElementById('copy-btn');
+  btn.textContent='Copied!'; btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1300);
+}
+
+// Seed with example tables
+function seedExample(){
+  tables=[
+    {id:'t1',name:'users',cols:[
+      {id:'c1',name:'id',type:'INTEGER',pk:true},
+      {id:'c2',name:'name',type:'TEXT',pk:false},
+      {id:'c3',name:'email',type:'VARCHAR(255)',pk:false},
+      {id:'c4',name:'created_at',type:'TIMESTAMP',pk:false},
+    ]},
+    {id:'t2',name:'orders',cols:[
+      {id:'c5',name:'id',type:'INTEGER',pk:true},
+      {id:'c6',name:'user_id',type:'INTEGER',pk:false},
+      {id:'c7',name:'total',type:'DECIMAL(10,2)',pk:false},
+      {id:'c8',name:'status',type:'TEXT',pk:false},
+    ]},
+  ];
+  tableCounter=2; colCounter=8;
+  renderTables(); updateFromSelect();
+  document.getElementById('from-table').value='t1';
+  updateColCheckboxes();
+  updateGroupCheckboxes();
+  buildQuery();
+}
+
+seedExample();
+</script>
+</body>
+</html>
